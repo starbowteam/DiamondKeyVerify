@@ -163,9 +163,7 @@
                 <div class="grid-3">
                     <div class="card"><div class="card-icon"><i class="fas fa-fingerprint"></i></div><h3>Один аккаунт</h3><p>Регистрируйся один раз и входи во все сервисы Diamond.</p></div>
                     <div class="card"><div class="card-icon"><i class="fas fa-lock"></i></div><h3>Секретное слово</h3><p>Криптостойкий ключ, созданный на основе SHA-256.</p></div>
-                   
                     <div class="card"><div class="card-icon"><i class="fas fa-shield-alt"></i></div><h3>Приватность</h3><p>Все данные хранятся локально. Никто не получит доступ к твоим сервисам.</p></div>
-                    
                 </div>
             </div>
             <div class="footer">
@@ -402,7 +400,7 @@
                     saveUsers(users);
                 }
                 currentUser = user;
-                sessionStorage.setItem('diamkey_current', JSON.stringify(user));
+                localStorage.setItem('diamkey_current', JSON.stringify(user));
                 getSessions().push({ email: user.email, login: user.login, token: user.token, time: new Date().toISOString() });
                 saveSessions(getSessions());
                 document.getElementById('authModal').style.display='none';
@@ -427,7 +425,7 @@
                 users.push(newUser);
                 saveUsers(users);
                 currentUser = newUser;
-                sessionStorage.setItem('diamkey_current', JSON.stringify(newUser));
+                localStorage.setItem('diamkey_current', JSON.stringify(newUser));
                 document.getElementById('authModal').style.display='none';
                 updateAuthButton(); updateHeroButtons();
                 navigate('profile'); window.location.hash = '#profile';
@@ -435,7 +433,7 @@
             }
             async function logout() {
                 currentUser = null;
-                sessionStorage.removeItem('diamkey_current');
+                localStorage.removeItem('diamkey_current');
                 updateAuthButton(); updateHeroButtons();
                 navigate('home'); window.location.hash = '#home';
                 showToast('Вы вышли');
@@ -702,7 +700,7 @@
                         users[idx].avatar = avatarDataUrl;
                         saveUsers(users);
                         currentUser.name = name; currentUser.description = desc; currentUser.avatar = avatarDataUrl;
-                        sessionStorage.setItem('diamkey_current', JSON.stringify(currentUser));
+                        localStorage.setItem('diamkey_current', JSON.stringify(currentUser));
                         showProfilePage(); showToast('Профиль обновлён'); modal.style.display='none';
                     };
                     if (fileInput.files && fileInput.files[0]) {
@@ -781,7 +779,7 @@
 
                 window.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.style.display='none'; });
 
-                const saved = sessionStorage.getItem('diamkey_current');
+                const saved = localStorage.getItem('diamkey_current');
                 if (saved) {
                     let user = JSON.parse(saved);
                     if (!user.token || !user.secretWord) {
@@ -793,7 +791,7 @@
                         saveUsers(users);
                     }
                     currentUser = user;
-                    sessionStorage.setItem('diamkey_current', JSON.stringify(user));
+                    localStorage.setItem('diamkey_current', JSON.stringify(user));
                     updateAuthButton(); updateHeroButtons();
                 } else {
                     updateAuthButton(); updateHeroButtons();
