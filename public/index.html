@@ -429,7 +429,6 @@ window.addEventListener('resize',()=>{
             }).join('') : '<p>Нет тикетов</p>'}
           </div>
         </div>`;
-      // переключение под-вкладок
       container.querySelectorAll('.tab[data-sub]').forEach(tab => {
         tab.addEventListener('click', () => {
           container.querySelectorAll('.tab[data-sub]').forEach(t => t.classList.remove('active'));
@@ -449,7 +448,6 @@ window.addEventListener('resize',()=>{
     });
   }
 
-  // Редактирование пользователя админом (восстановлено)
   window.editUserByAdmin = async (email) => {
     const { data: users } = await supabase.from('users').select('*').eq('email', email);
     if (!users?.length) return showToast('Пользователь не найден');
@@ -487,12 +485,7 @@ window.addEventListener('resize',()=>{
     document.getElementById('closeAdminEditModal').onclick = () => modal.style.display = 'none';
   };
 
-  // Удаление тикета (остаёмся в админке)
-  window.deleteTicket = async (ticketId) => {
-    if (!confirm('Удалить тикет?')) return;
-    await supabase.from('tickets').delete().eq('id', ticketId);
-    showProfilePage();
-  };
+  window.deleteTicket = async (ticketId) => { if (!confirm('Удалить тикет?')) return; await supabase.from('tickets').delete().eq('id', ticketId); showProfilePage(); };
   window.adminReplyToTicket = async (ticketId) => {
     const input = document.getElementById('ticketAdminInput_' + ticketId);
     if (!input) return;
@@ -505,13 +498,9 @@ window.addEventListener('resize',()=>{
     input.value = '';
     showProfilePage();
   };
-  window.deleteUser = async (email) => {
-    if (!confirm('Удалить пользователя?')) return;
-    await supabase.from('users').delete().eq('email', email);
-    showProfilePage();
-  };
+  window.deleteUser = async (email) => { if (!confirm('Удалить пользователя?')) return; await supabase.from('users').delete().eq('email', email); showProfilePage(); };
 
-  // ================== ПОДДЕРЖКА (красивая) ==================
+  // ================== ПОДДЕРЖКА (улучшенный макет) ==================
   async function showSupportPage() {
     if (!currentUser) return;
     const { data: tickets } = await supabase.from('tickets').select('*').eq('email', currentUser.email);
@@ -524,23 +513,22 @@ window.addEventListener('resize',()=>{
         <button class="quick-question-btn" data-question="Как использовать токен?">Как использовать токен?</button>
         <button class="quick-question-btn" data-question="Как восстановить пароль?">Восстановление пароля</button>
       </div>
-      <div style="display:flex; gap:24px; align-items:flex-start;">
+      <div style="display:flex; gap:24px; align-items:stretch;">
         <div style="width:280px; flex-shrink:0;">
           <div class="card">
             <h4>Ваш тикет</h4>
             ${existingTicket ? `<p style="color:var(--text-muted);">Статус: открыт</p><button class="btn btn-outline" id="closeMyTicket">Закрыть тикет</button>` : `<button class="btn btn-primary" id="openNewTicket">Открыть тикет</button>`}
           </div>
         </div>
-        <div style="flex:1;">
-          ${existingTicket ? `<div class="ticket-chat" style="height:60vh;">
-            <div class="ticket-messages">${(existingTicket.messages||[]).map(m => `<div class="chat-message ${m.sender==='admin'?'bot':'user'}"><div class="chat-sender">${m.sender==='admin'?'Администратор':'Вы'}</div><div class="chat-bubble">${m.text}</div></div>`).join('')}</div>
-            <div style="display:flex; gap:6px;"><input id="userTicketInput" placeholder="Введите сообщение..." style="flex:1;"><button class="btn btn-outline" id="sendUserTicketReply">Отправить</button></div>
-          </div>` : '<p style="color:var(--text-muted);">У вас пока нет открытых тикетов.</p>'}
+        <div style="flex:1; display:flex; flex-direction:column;">
+          ${existingTicket ? `<div class="ticket-chat" style="flex:1; min-height:60vh;">
+            <div class="ticket-messages" style="flex:1; overflow-y:auto; padding:12px; border:1px solid var(--border-dim); border-radius:16px; background:#0a0a0f;">${(existingTicket.messages||[]).map(m => `<div class="chat-message ${m.sender==='admin'?'bot':'user'}"><div class="chat-sender">${m.sender==='admin'?'Администратор':'Вы'}</div><div class="chat-bubble">${m.text}</div></div>`).join('')}</div>
+            <div style="display:flex; gap:6px; margin-top:10px;"><input id="userTicketInput" placeholder="Введите сообщение..." style="flex:1;"><button class="btn btn-outline" id="sendUserTicketReply">Отправить</button></div>
+          </div>` : '<div style="color:var(--text-muted); padding:20px;">У вас пока нет открытых тикетов.</div>'}
         </div>
       </div>
     </div>`;
 
-    // FAQ
     document.querySelectorAll('.quick-question-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const question = btn.dataset.question;
