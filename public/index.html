@@ -146,7 +146,15 @@
   </div>
 
   <div id="forum-page" class="page">
-    <div style="padding-top:60px;"><h2 style="font-size:2rem; margin-bottom:30px; color:var(--silver-light);"><i class="fas fa-comments"></i> Форум</h2><div id="forumPosts" style="margin-bottom:40px;"></div><div id="forumForm" style="display:none;"><textarea id="forumMessage" placeholder="Ваше сообщение..." style="min-height:80px;"></textarea><button class="btn btn-primary" id="sendForumBtn" style="margin-top:10px;">Отправить</button></div><p id="forumLoginPrompt">Войдите, чтобы участвовать в обсуждении.</p></div>
+    <div style="padding-top:60px;">
+      <h2 style="font-size:2rem; margin-bottom:30px; color:var(--silver-light);"><i class="fas fa-comments"></i> Форум</h2>
+      <div id="forumPosts" style="margin-bottom:40px;"></div>
+      <div id="forumForm" style="display:none;">
+        <textarea id="forumMessage" placeholder="Ваше сообщение..." style="min-height:80px;"></textarea>
+        <button class="btn btn-primary" id="sendForumBtn" style="margin-top:10px;">Отправить</button>
+      </div>
+      <p id="forumLoginPrompt" style="display:none;">Войдите, чтобы участвовать в обсуждении.</p>
+    </div>
   </div>
 
   <div id="profile-page" class="page"></div>
@@ -234,7 +242,6 @@ window.addEventListener('resize',()=>{
   function generateToken() { const adj = ['golden','silver','mystic','shadow','prime','crystal','onyx','brave','frost']; const nouns = ['falcon','tiger','phoenix','dragon','wolf','spark','nexus','core','vault','key']; const a = adj[Math.floor(Math.random()*adj.length)]; const b = nouns[Math.floor(Math.random()*nouns.length)]; const c = nouns[Math.floor(Math.random()*nouns.length)]; const num = Math.floor(1000+Math.random()*9000); return `diamkey_${a}_${b}_${c}_${num}`; }
   async function generateSecret(email) { const msg = email + Date.now() + Math.random(); const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg)); const hashArray = Array.from(new Uint8Array(hashBuffer)); return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 24).toUpperCase(); }
 
-  // Глобальная навигация
   function navigate(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const el = document.getElementById(page + '-page');
@@ -243,7 +250,11 @@ window.addEventListener('resize',()=>{
     document.getElementById('navSupport').style.display = currentUser ? 'inline' : 'none';
     if (page === 'profile' && currentUser) showProfilePage();
     if (page === 'support' && currentUser) showSupportPage();
-    if (page === 'forum') loadForumPosts();
+    if (page === 'forum') {
+      // Сразу показываем/скрываем форму в зависимости от авторизации
+      updateForumAccess();
+      loadForumPosts(); // Загружаем посты в фоне
+    }
     if (page === 'home') { updateHeroButtons(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }
   window.navigate = navigate;
@@ -268,6 +279,19 @@ window.addEventListener('resize',()=>{
       ? `<button class="btn btn-primary" onclick="navigate('profile')"><i class="fas fa-user"></i> Мой DiamKey</button><button class="btn btn-outline" onclick="navigate('support')"><i class="fas fa-headset"></i> Поддержка</button>`
       : `<button class="btn btn-primary" id="getStartedBtn"><i class="fas fa-user-plus"></i> Создать DiamKey</button><a href="#features" class="btn btn-outline" id="learnMoreBtn"><i class="fas fa-arrow-down"></i> Узнать больше</a>`;
     if (!currentUser) document.getElementById('getStartedBtn').addEventListener('click', () => openAuthModal('register'));
+  }
+
+  // Прямое управление доступом к форуму
+  function updateForumAccess() {
+    const form = document.getElementById('forumForm');
+    const prompt = document.getElementById('forumLoginPrompt');
+    if (currentUser) {
+      form.style.display = 'block';
+      prompt.style.display = 'none';
+    } else {
+      form.style.display = 'none';
+      prompt.style.display = 'block';
+    }
   }
 
   document.getElementById('burgerMenu').addEventListener('click', () => document.getElementById('navLinks').classList.toggle('active'));
@@ -350,6 +374,8 @@ window.addEventListener('resize',()=>{
     currentUser = null;
     localStorage.removeItem('diamkey_current');
     updateAuthButton(); updateHeroButtons();
+    // Обновляем видимость форм на всех активных страницах
+    updateForumAccess();
     navigate('home');
   }
 
@@ -454,12 +480,13 @@ window.addEventListener('resize',()=>{
     document.getElementById('closeAdminEditModal').onclick = () => modal.style.display = 'none';
   };
 
-  // МГНОВЕННАЯ ОТПРАВКА ФОРУМА (оптимистичный UI)
+  // ФОРУМ (оптимистичная отправка)
   async function sendForumMessage() {
     if (!currentUser) return showToast('Войдите');
     const input = document.getElementById('forumMessage');
     const msg = input.value.trim();
     if (!msg) return;
+    // Создаём временный пост и сразу вставляем
     const tempPost = {
       id: 'temp_' + Date.now(),
       email: currentUser.email,
@@ -470,7 +497,6 @@ window.addEventListener('resize',()=>{
       message: msg,
       time: new Date().toISOString()
     };
-    // Мгновенно вставляем в DOM
     const container = document.getElementById('forumPosts');
     const tempEl = document.createElement('div');
     tempEl.className = 'card visible';
@@ -482,7 +508,7 @@ window.addEventListener('resize',()=>{
     <p style="margin-top:10px;">${tempPost.message}</p>`;
     container.prepend(tempEl);
     input.value = '';
-    // Фоново сохраняем в Supabase
+    // Фоново сохраняем
     const { error } = await supabase.from('forum').insert([{
       email: tempPost.email,
       name: tempPost.name,
@@ -496,10 +522,10 @@ window.addEventListener('resize',()=>{
       tempEl.remove();
       showToast('Ошибка отправки');
     } else {
-      // Заменяем временный ID настоящим, если нужно (для удаления админом)
-      // Для простоты пока не заменяем, т.к. ID используется для удаления, но админ может удалить и настоящий пост позже.
-      // Чтобы не усложнять, обновим список через секунду для синхронизации.
-      setTimeout(() => loadForumPosts(), 1500);
+      // Заменяем временный ID на настоящий (для удаления админом)
+      setTimeout(async () => {
+        await loadForumPosts();
+      }, 1000);
     }
   }
 
@@ -518,13 +544,11 @@ window.addEventListener('resize',()=>{
         <p style="margin-top:10px;">${p.message}</p>
       </div>
     `).join('') : '<p>Нет сообщений.</p>';
-    document.getElementById('forumForm').style.display = currentUser ? 'block' : 'none';
-    document.getElementById('forumLoginPrompt').style.display = currentUser ? 'none' : 'block';
   }
 
   window.deleteForumPost = async (id) => { await supabase.from('forum').delete().eq('id', id); loadForumPosts(); };
 
-  // МГНОВЕННОЕ СОХРАНЕНИЕ АВАТАРА
+  // МГНОВЕННАЯ ЗАГРУЗКА АВАТАРА
   window.openProfileEditModal = async () => {
     if (!currentUser) return;
     const modal = document.getElementById('profileEditModal');
@@ -550,7 +574,7 @@ window.addEventListener('resize',()=>{
           currentUser.avatar = updates.avatar;
           localStorage.setItem('diamkey_current', JSON.stringify(currentUser));
           modal.style.display = 'none';
-          showProfilePage(); // перерисовка с новым аватаром
+          showProfilePage(); // Сразу показываем новый аватар
           // Фоново сохраняем
           const { error } = await supabase.from('users').update(updates).eq('email', currentUser.email);
           if (error) showToast('Ошибка сохранения аватара');
@@ -569,7 +593,6 @@ window.addEventListener('resize',()=>{
     document.getElementById('closeProfileEditModal').onclick = () => modal.style.display = 'none';
   };
 
-  // Остальное (поддержка, тикеты) остаётся без изменений, т.к. там нет критичных задержек
   async function showSupportPage() {
     if (!currentUser) return;
     const { data: tickets } = await supabase.from('tickets').select('*').eq('email', currentUser.email);
@@ -607,6 +630,7 @@ window.addEventListener('resize',()=>{
     input.value = ''; showSupportPage();
   };
   window.copyText = (t) => { navigator.clipboard.writeText(t); showToast('Скопировано!'); };
+  window.deleteUser = async (email) => { if (!confirm('Удалить пользователя?')) return; await supabase.from('users').delete().eq('email', email); showProfilePage(); };
 
   function startCipherEffect(el, text) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
@@ -633,7 +657,8 @@ window.addEventListener('resize',()=>{
         if (!check) { currentUser = null; localStorage.removeItem('diamkey_current'); }
       } catch (e) { currentUser = null; }
     }
-    updateAuthButton(); updateHeroButtons();
+    updateAuthButton();
+    updateHeroButtons();
     navigate('home');
     startCipherEffect(document.getElementById('cipherTitle'), 'DIAMKEY');
     const observer = new IntersectionObserver(entries => { entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }); }, { threshold: 0.1 });
@@ -641,7 +666,6 @@ window.addEventListener('resize',()=>{
   });
 
   window.logout = logout;
-  window.deleteUser = async (email) => { if (!confirm('Удалить пользователя?')) return; await supabase.from('users').delete().eq('email', email); showProfilePage(); };
 })();
 </script>
 </body>
