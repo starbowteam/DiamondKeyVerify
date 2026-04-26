@@ -29,9 +29,62 @@
         .content { position: relative; z-index:1; min-height: 100vh; }
         .navbar { display: flex; justify-content: space-between; align-items: center; padding: 24px; flex-wrap: wrap; gap:20px; animation: fadeUp 0.6s ease; }
         .logo a { display: flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 800; color: var(--silver-light); text-decoration: none; }
-        .nav-links { display: flex; gap: 32px; }
+        .nav-links { display: flex; gap: 32px; align-items: center; position: relative; }
         .nav-links a { color: var(--text-muted); text-decoration: none; font-weight: 500; transition: 0.2s; }
         .nav-links a:hover { color: var(--text-light); }
+        .status-btn { cursor: pointer; color: var(--text-muted); font-weight: 500; transition: 0.2s; background: none; border: none; font-size: 1rem; font-family: inherit; }
+        .status-btn:hover { color: var(--text-light); }
+        .status-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            border-radius: 24px;
+            padding: 24px;
+            min-width: 320px;
+            z-index: 2000;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+        .status-dropdown.open { display: block; }
+        .service-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            text-decoration: none;
+            color: inherit;
+            border-radius: 16px;
+            padding: 8px;
+            transition: background 0.2s;
+        }
+        .service-item:hover { background: rgba(255,255,255,0.03); }
+        .progress-ring {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: conic-gradient(var(--progress-color) calc(var(--progress) * 1%), transparent 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: white;
+            background-color: #1e1e2a;
+        }
+        .service-info { flex: 1; }
+        .service-info strong { display: block; font-size: 1.1rem; margin-bottom: 4px; }
+        .service-info span { font-size: 0.8rem; color: var(--text-muted); }
+        .dropdown-footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .dropdown-footer a { color: var(--silver-light); text-decoration: none; margin: 0 8px; }
+        .dropdown-footer a:hover { color: white; }
         .page { display: none; max-width: 1280px; margin: 0 auto; padding: 0 24px 40px; }
         .page.active { display: block; }
         .hero { padding: 100px 0 80px; text-align: center; }
@@ -80,7 +133,7 @@
         .quick-question-btn { background:#1a1a22; border:1px solid var(--border-dim); color:var(--text-muted); padding: 8px 16px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; transition: 0.2s; }
         .quick-question-btn:hover { background: #2a2a33; color: #fff; }
         .auth-link { color: var(--text-light); }
-        @media (max-width: 768px) { .hero h1 { font-size: 2.5rem; } .section-title { font-size: 2rem; } .chat-container { max-height: 300px; } }
+        @media (max-width: 768px) { .hero h1 { font-size: 2.5rem; } .section-title { font-size: 2rem; } .chat-container { max-height: 300px; } .status-dropdown { left: 0; right: auto; min-width: 280px; } }
     </style>
 </head>
 <body>
@@ -93,6 +146,28 @@
                 <a href="#forum" id="navForum">Форум</a>
                 <a href="#profile" id="navProfile" style="display:none;">Профиль</a>
                 <a href="#support" id="navSupport" style="display:none;">Поддержка</a>
+                <button class="status-btn" id="statusBtn">Статус <i class="fas fa-chevron-down"></i></button>
+                <div class="status-dropdown" id="statusDropdown">
+                    <a href="https://diamond-ai.ru" target="_blank" class="service-item">
+                        <i class="fas fa-robot" style="font-size:1.5rem; color:var(--silver);"></i>
+                        <div class="service-info"><strong>Diamond AI</strong><span>Искусственный интеллект</span></div>
+                        <div class="progress-ring" style="--progress:74; --progress-color:#4A90E2;">74%</div>
+                    </a>
+                    <a href="#" class="service-item">
+                        <i class="fas fa-ticket" style="font-size:1.5rem; color:var(--silver);"></i>
+                        <div class="service-info"><strong>Unlock</strong><span>Обход блокировок</span></div>
+                        <div class="progress-ring" style="--progress:19; --progress-color:#D4AF37;">19%</div>
+                    </a>
+                    <a href="https://dirmess.ru" target="_blank" class="service-item">
+                        <span style="font-weight:800; color:var(--silver-light);">.drm</span>
+                        <div class="service-info"><strong>Dirmess</strong><span>Мессенджер Diamond</span></div>
+                        <div class="progress-ring" style="--progress:7; --progress-color:#9B59B6;">7%</div>
+                    </a>
+                    <div class="dropdown-footer">
+                        Мы ждём вашей помощи, сотрудников, инвесторов<br>
+                        <a href="https://discord.gg/diamondshop" target="_blank"><i class="fab fa-discord"></i> Присоединиться</a>
+                    </div>
+                </div>
                 <a href="#" id="authBtn">Войти</a>
             </div>
         </div>
@@ -142,7 +217,7 @@
 
     <div class="modal" id="authModal"><div class="modal-content" id="authModalContent"></div></div>
     <div class="modal" id="profileEditModal"><div class="modal-content" id="profileEditModalContent"></div></div>
-    <div class="modal" id="newTicketModal"><div class="modal-content" id="newTicketModalContent"></div></div>
+    <div class="modal" id="adminEditUserModal"><div class="modal-content" id="adminEditUserModalContent"></div></div>
     <div class="modal" id="privacyModal"><div class="modal-content" id="privacyModalContent"></div></div>
     <div class="modal" id="termsModal"><div class="modal-content" id="termsModalContent"></div></div>
 
@@ -225,20 +300,14 @@
     </script>
     <script>
         (function() {
-            // ══════════════════════════════════════════
             // Supabase конфигурация
             const SUPABASE_URL = 'https://pqgwrokpizeelfrjmgoc.supabase.co';
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxZ3dyb2twaXplZWxmcmptZ29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNTAyMDksImV4cCI6MjA5MjcyNjIwOX0.qtFCGBnpwdQbtmpwSZxI_hH3arq4HBAw62vs5h8WmAk';
             const ADMIN_EMAIL = 'abugay12@mail.ru';
             
-            // Инициализация клиента Supabase
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            
             let currentUser = null;
 
-            // ══════════════════════════════════════════
-            // Вспомогательные функции
-            
             function showToast(msg) {
                 const t = document.createElement('div'); t.className='toast'; t.innerText=msg;
                 document.body.appendChild(t); setTimeout(()=>t.remove(),3000);
@@ -303,9 +372,6 @@
             window.navigateToProfile = () => { navigate('profile'); window.location.hash = '#profile'; };
             window.navigateToSupport = () => { navigate('support'); window.location.hash = '#support'; };
 
-            // ══════════════════════════════════════════
-            // Авторизация
-            
             function openAuthModal(mode) {
                 const modal = document.getElementById('authModal');
                 const content = document.getElementById('authModalContent');
@@ -342,35 +408,22 @@
             async function login() {
                 const identity = document.getElementById('loginIdentity').value.trim();
                 const password = document.getElementById('loginPassword').value;
-                
                 if (!identity || !password) return showToast('Заполните все поля');
-
-                // Ищем пользователя в Supabase
                 let { data: users, error } = await supabase
                     .from('users')
                     .select('*')
                     .or(`email.eq.${identity},login.eq.${identity}`)
                     .eq('password', password);
-
                 if (error) return showToast('Ошибка: ' + error.message);
                 if (!users || users.length === 0) return showToast('Неверный email/логин или пароль');
-
                 let user = users[0];
-                
-                // Проверяем наличие токена и секретного слова
                 if (!user.token || !user.secret_word) {
                     const token = generateToken();
                     const secretWord = await generateSecret(user.email);
-                    const { error: updateError } = await supabase
-                        .from('users')
-                        .update({ token, secret_word: secretWord })
-                        .eq('email', user.email);
-                    
-                    if (updateError) return showToast('Ошибка обновления: ' + updateError.message);
+                    await supabase.from('users').update({ token, secret_word: secretWord }).eq('email', user.email);
                     user.token = token;
                     user.secretWord = secretWord;
                 }
-
                 currentUser = {
                     email: user.email,
                     login: user.login,
@@ -380,7 +433,6 @@
                     avatar: user.avatar || '',
                     description: user.description || ''
                 };
-                
                 localStorage.setItem('diamkey_current', JSON.stringify(currentUser));
                 document.getElementById('authModal').style.display='none';
                 updateAuthButton(); updateHeroButtons();
@@ -393,40 +445,21 @@
                 const email = document.getElementById('regEmail').value.trim();
                 const login = document.getElementById('regLogin').value.trim();
                 const password = document.getElementById('regPassword').value;
-                
                 if (!email || !login || password.length < 6) return showToast('Заполните все поля (пароль мин. 6 символов)');
-                
-                // Проверяем, не занят ли email или логин
                 let { data: existing } = await supabase
                     .from('users')
                     .select('email, login')
                     .or(`email.eq.${email},login.eq.${login}`);
-                
                 if (existing && existing.length > 0) {
                     const taken = existing.find(u => u.email === email) ? 'Email' : 'Логин';
                     return showToast(taken + ' уже занят');
                 }
-
                 const token = generateToken();
                 const secretWord = await generateSecret(email);
-                
                 const { error } = await supabase
                     .from('users')
-                    .insert([
-                        { 
-                            email, 
-                            login, 
-                            password, 
-                            token, 
-                            secret_word: secretWord,
-                            name: '',
-                            avatar: '',
-                            description: ''
-                        }
-                    ]);
-
+                    .insert([{ email, login, password, token, secret_word: secretWord, name: '', avatar: '', description: '' }]);
                 if (error) return showToast('Ошибка регистрации: ' + error.message);
-
                 currentUser = { email, login, token, secretWord, name: '', avatar: '', description: '' };
                 localStorage.setItem('diamkey_current', JSON.stringify(currentUser));
                 document.getElementById('authModal').style.display='none';
@@ -445,16 +478,12 @@
                 showToast('Вы вышли');
             }
 
-            // ══════════════════════════════════════════
-            // Профиль
-            
             async function showProfilePage() {
                 if (!currentUser) return;
                 const container = document.getElementById('profile-page');
                 const isAdmin = currentUser.email === ADMIN_EMAIL;
                 const avatarSrc = currentUser.avatar || '';
                 const displayName = currentUser.name || currentUser.login || currentUser.email;
-
                 container.innerHTML = `
                     <div style="padding:60px 0; max-width:900px; margin:0 auto;">
                         <div class="tabs">
@@ -491,12 +520,9 @@
                         ${isAdmin ? `<div id="tab-admin" class="tab-content" style="display:none;"></div>` : ''}
                     </div>
                 `;
-
-                // Если админ, загружаем админ-панель
                 if (isAdmin) {
                     const { data: users } = await supabase.from('users').select('*');
                     const { data: tickets } = await supabase.from('tickets').select('*');
-                    
                     let ticketsHtml = tickets && tickets.length > 0 
                         ? tickets.map((ticket, index) => {
                             const msgs = ticket.messages || [];
@@ -523,15 +549,30 @@
                     document.getElementById('tab-admin').innerHTML = `
                         <h3 style="color:var(--silver-light); margin-bottom:20px;"><i class="fas fa-crown"></i> Админ-панель</h3>
                         <div class="grid-3">
-                            <div class="card visible"><h4>Пользователи (${users ? users.length : 0})</h4>
-                                ${users ? users.map(u => `<div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span>${u.name || u.login || u.email}</span><button class="btn btn-outline" style="padding:2px 10px;" onclick="deleteUser('${u.email}')"><i class="fas fa-trash"></i></button></div>`).join('') : '<p>Нет пользователей</p>'}
+                            <div class="card visible">
+                                <h4>Пользователи (${users ? users.length : 0})</h4>
+                                ${users ? users.map(u => `
+                                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:10px;">
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <div style="width:32px; height:32px; border-radius:50%; overflow:hidden; background:var(--bg-card); display:flex; align-items:center; justify-content:center;">
+                                                ${u.avatar ? `<img src="${u.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user" style="color:var(--silver); font-size:0.9rem;"></i>'}
+                                            </div>
+                                            <div>
+                                                <strong>${u.name || u.login || u.email}</strong>
+                                                <div style="font-size:0.7rem; color:var(--text-muted);">${u.email}</div>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap:6px;">
+                                            <button class="btn btn-outline" style="padding:2px 10px;" onclick="editUserByAdmin('${u.email}')"><i class="fas fa-edit"></i></button>
+                                            <button class="btn btn-outline" style="padding:2px 10px;" onclick="deleteUser('${u.email}')"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                `).join('') : '<p>Нет пользователей</p>'}
                             </div>
                             <div class="card visible"><h4>Тикеты</h4>${ticketsHtml}</div>
                         </div>
                     `;
                 }
-
-                // Обработчики переключения вкладок
                 container.querySelectorAll('.tab').forEach(tab => {
                     tab.addEventListener('click', () => {
                         container.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -543,26 +584,70 @@
                 });
             }
 
-            // ══════════════════════════════════════════
-            // Форум
-            
+            // Редактирование пользователя админом
+            window.editUserByAdmin = async (email) => {
+                const { data: users, error } = await supabase.from('users').select('*').eq('email', email);
+                if (error || !users.length) return showToast('Пользователь не найден');
+                const user = users[0];
+                const modal = document.getElementById('adminEditUserModal');
+                const content = document.getElementById('adminEditUserModalContent');
+                content.innerHTML = `
+                    <h3>Редактирование пользователя</h3>
+                    <div class="input-group"><label>Имя</label><input id="editAdminName" value="${user.name || ''}"></div>
+                    <div class="input-group"><label>Логин</label><input id="editAdminLogin" value="${user.login || ''}"></div>
+                    <div class="input-group"><label>Email</label><input id="editAdminEmail" value="${user.email || ''}"></div>
+                    <div class="input-group"><label>Пароль</label><input id="editAdminPassword" type="password" placeholder="Новый пароль (оставьте пустым, чтобы не менять)"></div>
+                    <div class="input-group"><label>Аватар (загрузите файл)</label><input type="file" id="editAdminAvatar" accept="image/*"></div>
+                    <div class="input-group"><label>Токен</label><input value="${user.token}" readonly></div>
+                    <div class="input-group"><label>Секретное слово</label><input value="${user.secret_word}" readonly></div>
+                    <button class="btn btn-primary" id="saveAdminEditBtn">Сохранить</button>
+                    <button class="btn btn-outline" id="closeAdminEditModal">Закрыть</button>
+                `;
+                modal.style.display = 'flex';
+                document.getElementById('saveAdminEditBtn').onclick = async () => {
+                    const name = document.getElementById('editAdminName').value.trim();
+                    const login = document.getElementById('editAdminLogin').value.trim();
+                    const emailNew = document.getElementById('editAdminEmail').value.trim();
+                    const password = document.getElementById('editAdminPassword').value.trim();
+                    const avatarFile = document.getElementById('editAdminAvatar').files[0];
+                    const updates = { name, login, email: emailNew };
+                    if (password) updates.password = password;
+                    if (avatarFile) {
+                        const reader = new FileReader();
+                        reader.onload = async (e) => {
+                            updates.avatar = e.target.result;
+                            await applyAdminEdits(email, updates);
+                        };
+                        reader.readAsDataURL(avatarFile);
+                    } else {
+                        await applyAdminEdits(email, updates);
+                    }
+                };
+                document.getElementById('closeAdminEditModal').onclick = () => modal.style.display = 'none';
+            };
+
+            async function applyAdminEdits(oldEmail, updates) {
+                const { error } = await supabase.from('users').update(updates).eq('email', oldEmail);
+                if (error) return showToast('Ошибка: ' + error.message);
+                document.getElementById('adminEditUserModal').style.display = 'none';
+                showProfilePage();
+                showToast('Данные пользователя обновлены');
+            }
+
             async function loadForumPosts() {
                 const { data: posts, error } = await supabase
                     .from('forum')
                     .select('*')
                     .order('time', { ascending: false });
-
                 if (error) return showToast('Ошибка загрузки форума: ' + error.message);
-
                 const container = document.getElementById('forumPosts');
                 if (!container) return;
-
                 container.innerHTML = posts && posts.length 
                     ? posts.map((p, i) => `
                         <div class="card visible" style="margin-bottom:20px;">
                             <div style="display:flex; gap:10px; align-items:center;">
-                                <div style="width:40px; height:40px; border-radius:50%; overflow:hidden; background:var(--bg-card);">
-                                    ${p.avatar ? `<img src="${p.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user" style="color:var(--silver);"></i>'}
+                                <div style="width:40px; height:40px; border-radius:50%; overflow:hidden; background:var(--bg-card); display:flex; align-items:center; justify-content:center;">
+                                    ${p.avatar ? `<img src="${p.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user" style="color:var(--silver); font-size:1rem;"></i>'}
                                 </div>
                                 <div>
                                     <strong>${p.name || p.login || p.email}</strong>
@@ -575,7 +660,6 @@
                         </div>
                     `).join('') 
                     : '<p>Нет сообщений. Будьте первым!</p>';
-
                 document.getElementById('forumForm').style.display = currentUser ? 'block' : 'none';
                 document.getElementById('forumLoginPrompt').style.display = currentUser ? 'none' : 'block';
             }
@@ -584,35 +668,20 @@
                 if (!currentUser) return showToast('Войдите в аккаунт');
                 const msg = document.getElementById('forumMessage').value.trim();
                 if (!msg) return showToast('Введите сообщение');
-
                 const { error } = await supabase
                     .from('forum')
-                    .insert([
-                        {
-                            email: currentUser.email,
-                            name: currentUser.name || currentUser.login || currentUser.email,
-                            login: currentUser.login,
-                            avatar: currentUser.avatar || '',
-                            message: msg,
-                            time: new Date().toISOString()
-                        }
-                    ]);
-
+                    .insert([{ email: currentUser.email, name: currentUser.name || currentUser.login || currentUser.email, login: currentUser.login, avatar: currentUser.avatar || '', message: msg, time: new Date().toISOString() }]);
                 if (error) return showToast('Ошибка: ' + error.message);
                 document.getElementById('forumMessage').value = '';
                 loadForumPosts();
             }
 
-            // ══════════════════════════════════════════
-            // Поддержка (тикеты)
-            
             async function showSupportPage() {
                 if (!currentUser) return;
                 const { data: tickets } = await supabase
                     .from('tickets')
                     .select('*')
                     .eq('email', currentUser.email);
-
                 const container = document.getElementById('support-page');
                 container.innerHTML = `
                     <div style="padding:60px 0; max-width:900px; margin:0 auto;">
@@ -642,33 +711,24 @@
                         </div>
                     </div>
                 `;
-
                 document.getElementById('newTicketBtn').onclick = async () => {
                     const message = prompt('Опишите проблему:');
                     if (!message) return;
                     const { error } = await supabase
                         .from('tickets')
-                        .insert([
-                            { 
-                                id: Date.now().toString(),
-                                email: currentUser.email,
-                                messages: [{ sender: 'user', text: message, time: new Date().toISOString() }]
-                            }
-                        ]);
+                        .insert([{ id: Date.now().toString(), email: currentUser.email, messages: [{ sender: 'user', text: message, time: new Date().toISOString() }] }]);
                     if (error) return showToast('Ошибка: ' + error.message);
                     showSupportPage();
                     showToast('Тикет создан');
                 };
             }
 
-            // Экспорт функций в глобальную область видимости
             window.deleteForumPost = async (id) => {
                 if (!confirm('Удалить пост?')) return;
                 await supabase.from('forum').delete().eq('id', id);
                 loadForumPosts();
                 showToast('Пост удалён');
             };
-
             window.deleteUser = async (email) => {
                 if (!confirm(`Удалить пользователя ${email}?`)) return;
                 await supabase.from('users').delete().eq('email', email);
@@ -676,65 +736,46 @@
                 else showProfilePage();
                 showToast('Пользователь удалён');
             };
-
             window.adminReplyToTicket = async (ticketId, index) => {
                 const input = document.getElementById('adminReply_' + index);
                 if (!input) return;
                 const text = input.value.trim();
                 if (!text) return;
-                
                 const { data: ticket } = await supabase
                     .from('tickets')
                     .select('messages')
                     .eq('id', ticketId)
                     .single();
-                
                 if (!ticket) return;
                 const messages = [...(ticket.messages || []), { sender: 'admin', text, time: new Date().toISOString() }];
-                
-                await supabase
-                    .from('tickets')
-                    .update({ messages })
-                    .eq('id', ticketId);
-                
+                await supabase.from('tickets').update({ messages }).eq('id', ticketId);
                 input.value = '';
                 showProfilePage();
                 showToast('Ответ отправлен');
             };
-
             window.deleteTicket = async (ticketId) => {
                 if (!confirm('Удалить тикет?')) return;
                 await supabase.from('tickets').delete().eq('id', ticketId);
                 showProfilePage();
                 showToast('Тикет удалён');
             };
-
             window.userReplyToTicket = async (ticketId, index) => {
                 const input = document.getElementById('ticketInput_' + index);
                 if (!input) return;
                 const text = input.value.trim();
                 if (!text) return;
-                
                 const { data: ticket } = await supabase
                     .from('tickets')
                     .select('messages')
                     .eq('id', ticketId)
                     .single();
-                
                 if (!ticket) return;
                 const messages = [...(ticket.messages || []), { sender: 'user', text, time: new Date().toISOString() }];
-                
-                await supabase
-                    .from('tickets')
-                    .update({ messages })
-                    .eq('id', ticketId);
-                
+                await supabase.from('tickets').update({ messages }).eq('id', ticketId);
                 input.value = '';
                 showSupportPage();
             };
-
             window.copyText = (t) => { navigator.clipboard.writeText(t); showToast('Скопировано!'); };
-
             window.openProfileEditModal = async () => {
                 if (!currentUser) return;
                 const modal = document.getElementById('profileEditModal');
@@ -760,7 +801,6 @@
                 document.getElementById('closeProfileEditModal').onclick = () => modal.style.display = 'none';
             };
 
-            // Шифрующийся заголовок
             function startCipherEffect(element, finalText) {
                 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
                 let display = finalText.split('');
@@ -773,24 +813,28 @@
                 }, 150);
             }
 
-            // Инициализация
+            document.addEventListener('click', (e) => {
+                const dropdown = document.getElementById('statusDropdown');
+                const btn = document.getElementById('statusBtn');
+                if (!dropdown || !btn) return;
+                if (btn.contains(e.target)) {
+                    dropdown.classList.toggle('open');
+                } else if (!dropdown.contains(e.target)) {
+                    dropdown.classList.remove('open');
+                }
+            });
+
             document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('privacyModalContent').innerHTML = '<h3>Политика конфиденциальности</h3><p>Данные хранятся в облачной базе Supabase.</p><button class="btn btn-outline" onclick="document.getElementById(\'privacyModal\').style.display=\'none\'">Закрыть</button>';
                 document.getElementById('termsModalContent').innerHTML = '<h3>Условия использования</h3><p>Запрещены взлом, спам и нарушение работы сервиса.</p><button class="btn btn-outline" onclick="document.getElementById(\'termsModal\').style.display=\'none\'">Закрыть</button>';
-                
                 document.getElementById('privacyLink').onclick = e => { e.preventDefault(); document.getElementById('privacyModal').style.display='flex'; };
                 document.getElementById('termsLink').onclick = e => { e.preventDefault(); document.getElementById('termsModal').style.display='flex'; };
                 document.getElementById('navHome').onclick = e => { e.preventDefault(); navigate('home'); window.location.hash='#home'; };
                 document.getElementById('navForum').onclick = e => { e.preventDefault(); navigate('forum'); window.location.hash='#forum'; };
                 document.getElementById('navProfile').onclick = e => { e.preventDefault(); navigate('profile'); window.location.hash='#profile'; };
                 document.getElementById('navSupport').onclick = e => { e.preventDefault(); navigate('support'); window.location.hash='#support'; };
-
-                // Привязываем отправку сообщения форума
                 document.getElementById('sendForumBtn').addEventListener('click', sendForumMessage);
-
                 window.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.style.display='none'; });
-
-                // Восстановление сессии
                 const saved = localStorage.getItem('diamkey_current');
                 if (saved) {
                     currentUser = JSON.parse(saved);
@@ -800,19 +844,15 @@
                     updateAuthButton();
                     updateHeroButtons();
                 }
-
                 const hash = window.location.hash.slice(1) || 'home';
                 navigate(hash);
                 startCipherEffect(document.getElementById('cipherTitle'), 'DIAMKEY');
-
-                // Анимация появления карточек
                 const observer = new IntersectionObserver(entries => {
                     entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
                 }, { threshold: 0.1 });
                 document.querySelectorAll('.card').forEach(c => observer.observe(c));
             });
 
-            // Экспорт logout
             window.logout = logout;
         })();
     </script>
