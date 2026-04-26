@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* все стили как в последней версии, без изменений */
     :root {
       --bg-deep: #0a0a0f;
       --bg-card: #111116;
@@ -509,7 +508,7 @@ window.addEventListener('resize',()=>{
     showProfilePage();
   };
 
-  // ================== ПОДДЕРЖКА (ПОЛНОСТЬЮ ПЕРЕРАБОТАНА) ==================
+  // ================== ПОДДЕРЖКА (исправлена) ==================
   async function showSupportPage() {
     if (!currentUser) return;
     const { data: tickets } = await supabase.from('tickets').select('*').eq('email', currentUser.email);
@@ -522,22 +521,53 @@ window.addEventListener('resize',()=>{
         <button class="quick-question-btn" data-question="Как использовать токен?">Как использовать токен?</button>
         <button class="quick-question-btn" data-question="Как восстановить пароль?">Восстановление пароля</button>
       </div>
-      <div style="margin-bottom:16px;">
-        <button class="btn btn-primary" id="openNewTicket" ${existingTicket ? 'disabled' : ''}>
-          ${existingTicket ? 'Тикет уже открыт' : '<i class="fas fa-plus"></i> Открыть тикет'}
-        </button>
+      <div style="margin-bottom:16px;" id="ticketActionArea">
+        <!-- Кнопка открытия тикета или информация о том, что он уже открыт -->
       </div>
-      ${existingTicket ? `
-      <div class="ticket-chat" style="height:60vh;">
+      <div id="ticketChatArea">
+        <!-- Здесь будет чат, если тикет открыт -->
+      </div>
+    </div>`;
+
+    const actionArea = document.getElementById('ticketActionArea');
+    const chatArea = document.getElementById('ticketChatArea');
+
+    // Функция отрисовки кнопки/чата
+    if (existingTicket) {
+      actionArea.innerHTML = `<p style="color:var(--text-muted);">Ваш тикет открыт.</p>`;
+      chatArea.innerHTML = `<div class="ticket-chat" style="height:60vh;">
         <div class="ticket-messages">${(existingTicket.messages||[]).map(m => `<div class="chat-message ${m.sender==='admin'?'bot':'user'}"><div class="chat-sender">${m.sender==='admin'?'Администратор':'Вы'}</div><div class="chat-bubble">${m.text}</div></div>`).join('')}</div>
         <div style="display:flex; gap:6px; margin-bottom:10px;">
           <input id="userTicketInput" placeholder="Введите сообщение..." style="flex:1;">
           <button class="btn btn-outline" id="sendUserTicketReply">Отправить</button>
         </div>
         <button class="btn btn-outline" style="width:100%;" id="deleteMyTicket"><i class="fas fa-trash"></i> Удалить тикет</button>
-      </div>
-      ` : '<p style="color:var(--text-muted);">Нажмите кнопку выше, чтобы задать вопрос администратору.</p>'}
-    </div>`;
+      </div>`;
+      // Навешиваем обработчики
+      document.getElementById('sendUserTicketReply').onclick = async () => {
+        const input = document.getElementById('userTicketInput');
+        const text = input.value.trim();
+        if (!text) return;
+        const { data: ticket } = await supabase.from('tickets').select('messages').eq('id', existingTicket.id).single();
+        if (!ticket) return;
+        const messages = [...(ticket.messages || []), { sender: 'user', text, time: new Date().toISOString() }];
+        await supabase.from('tickets').update({ messages }).eq('id', existingTicket.id);
+        input.value = '';
+        showSupportPage();
+      };
+      document.getElementById('deleteMyTicket').onclick = async () => {
+        if (!confirm('Удалить тикет?')) return;
+        await supabase.from('tickets').delete().eq('id', existingTicket.id);
+        showSupportPage();
+      };
+    } else {
+      actionArea.innerHTML = `<button class="btn btn-primary" id="openNewTicket"><i class="fas fa-plus"></i> Открыть тикет</button>`;
+      document.getElementById('openNewTicket').onclick = async () => {
+        const { error } = await supabase.from('tickets').insert([{ id: Date.now().toString(), email: currentUser.email, messages: [] }]);
+        if (error) return showToast('Ошибка создания тикета');
+        showSupportPage();
+      };
+    }
 
     // FAQ модалки
     document.querySelectorAll('.quick-question-btn').forEach(btn => {
@@ -552,37 +582,6 @@ window.addEventListener('resize',()=>{
         document.getElementById('faqModal').style.display = 'flex';
       });
     });
-
-    // Открыть тикет
-    const openBtn = document.getElementById('openNewTicket');
-    if (openBtn && !existingTicket) openBtn.onclick = async () => {
-      if (existingTicket) return showToast('У вас уже есть открытый тикет');
-      const { error } = await supabase.from('tickets').insert([{ id: Date.now().toString(), email: currentUser.email, messages: [] }]);
-      if (error) return showToast('Ошибка создания тикета');
-      showSupportPage();
-    };
-
-    // Отправить сообщение
-    const replyBtn = document.getElementById('sendUserTicketReply');
-    if (replyBtn) replyBtn.onclick = async () => {
-      const input = document.getElementById('userTicketInput');
-      const text = input.value.trim();
-      if (!text) return;
-      const { data: ticket } = await supabase.from('tickets').select('messages').eq('id', existingTicket.id).single();
-      if (!ticket) return;
-      const messages = [...(ticket.messages || []), { sender: 'user', text, time: new Date().toISOString() }];
-      await supabase.from('tickets').update({ messages }).eq('id', existingTicket.id);
-      input.value = '';
-      showSupportPage();
-    };
-
-    // Удалить тикет
-    const deleteBtn = document.getElementById('deleteMyTicket');
-    if (deleteBtn) deleteBtn.onclick = async () => {
-      if (!confirm('Удалить тикет?')) return;
-      await supabase.from('tickets').delete().eq('id', existingTicket.id);
-      showSupportPage();
-    };
   }
 
   // ================== ФОРУМ (без изменений) ==================
