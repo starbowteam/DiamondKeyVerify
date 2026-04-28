@@ -235,12 +235,16 @@
       return;
     }
 
+    // Генерируем токен, секретное слово и email
+    const token = generateToken();   // <-- теперь создаём токен
     const secretWord = await generateSecret(login);
-    const email = login + '@diamkey.local'; // генерируем email, чтобы избежать ошибки
+    const email = login + '@diamkey.local';
+
     const { error } = await _supabase.from('users').insert([{
       login,
       email,
       password,
+      token,                    // <-- обязательно передаём
       secret_word: secretWord,
       name: '',
       avatar: '',
@@ -274,6 +278,17 @@
     await createTicketAndRedirect(sessionUser);
   });
 
+  // Генераторы (как в основном DiamKey)
+  function generateToken() {
+    const adj = ['golden','silver','mystic','shadow','prime','crystal','onyx','brave','frost'];
+    const nouns = ['falcon','tiger','phoenix','dragon','wolf','spark','nexus','core','vault','key'];
+    const a = adj[Math.floor(Math.random() * adj.length)];
+    const b = nouns[Math.floor(Math.random() * nouns.length)];
+    const c = nouns[Math.floor(Math.random() * nouns.length)];
+    const num = Math.floor(1000 + Math.random() * 9000);
+    return `diamkey_${a}_${b}_${c}_${num}`;
+  }
+
   async function generateSecret(login) {
     const msg = login + Date.now() + Math.random();
     const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -281,7 +296,7 @@
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 24).toUpperCase();
   }
 
-  // Создаём тикет и редиректим (теперь с login)
+  // Создаём тикет и редиректим
   async function createTicketAndRedirect(user) {
     if (!redirect) {
       statusTitle.innerText = 'Готово!';
@@ -291,7 +306,7 @@
     const ticket = 'diam_ticket_' + Math.random().toString(36).substr(2) + Date.now().toString(36);
     const { error } = await _supabase.from('oauth_tickets').insert([{
       ticket,
-      login: user.login   // сохраняем login
+      login: user.login
     }]);
     if (error) {
       console.error('Ошибка создания тикета:', error);
