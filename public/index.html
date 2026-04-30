@@ -535,15 +535,8 @@ window.addEventListener('resize',()=>{
 
   window.toggleRole = async (login, role) => {
     const { error } = await _supabase.from('users').update({ role }).eq('login', login);
-    if (error) {
-      console.error('Ошибка при обновлении роли:', error);
-      showToast('Ошибка обновления');
-      return;
-    }
-    if (currentUser.login === login) {
-      currentUser.role = role;
-      localStorage.setItem('diamkey_current', JSON.stringify(currentUser));
-    }
+    if (error) { console.error('Ошибка при обновлении роли:', error); showToast('Ошибка обновления'); return; }
+    if (currentUser.login === login) { currentUser.role = role; localStorage.setItem('diamkey_current', JSON.stringify(currentUser)); }
     showToast('Роль обновлена');
   };
 
@@ -580,11 +573,7 @@ window.addEventListener('resize',()=>{
     document.getElementById('closeAdminEditModal').onclick = () => modal.style.display = 'none';
   };
 
-  window.deleteTicket = async (ticketId) => {
-    if (!confirm('Удалить тикет?')) return;
-    await _supabase.from('tickets').delete().eq('id', ticketId);
-    showProfilePage();
-  };
+  window.deleteTicket = async (ticketId) => { if (!confirm('Удалить тикет?')) return; await _supabase.from('tickets').delete().eq('id', ticketId); showProfilePage(); };
   window.adminReplyToTicket = async (ticketId) => {
     const input = document.getElementById('ticketAdminInput_' + ticketId);
     if (!input) return;
@@ -597,11 +586,177 @@ window.addEventListener('resize',()=>{
     input.value = '';
     showProfilePage();
   };
-  window.deleteUser = async (login) => {
-    if (!confirm('Удалить пользователя?')) return;
-    await _supabase.from('users').delete().eq('login', login);
-    showProfilePage();
+  window.deleteUser = async (login) => { if (!confirm('Удалить пользователя?')) return; await _supabase.from('users').delete().eq('login', login); showProfilePage(); };
+
+  // ================== ПОДДЕРЖКА ==================
+  async function showSupportPage() {
+    if (!currentUser) return;
+    const { data: tickets } = await _supabase.from('tickets').select('*').eq('email', currentUser.email);
+    const existingTicket = tickets?.length ? tickets[0] : null;
+    const container = document.getElementById('support-page');
+    container.innerHTML = `<div style="padding:60px 0; max-width:900px; margin:0 auto;">
+      <h2 style="color:var(--silver-light);"><i class="fas fa-headset"></i> Поддержка</h2>
+      <div class="quick-questions" style="margin-bottom:20px;">
+        <button class="quick-question-btn" data-question="Что такое DiamKey?">Что такое DiamKey?</button>
+        <button class="quick-question-btn" data-question="Как использовать токен?">Как использовать токен?</button>
+        <button class="quick-question-btn" data-question="Как восстановить пароль?">Восстановление пароля</button>
+      </div>
+      <div style="margin-bottom:16px;" id="ticketActionArea"></div>
+      <div id="ticketChatArea"></div>
+    </div>`;
+
+    const actionArea = document.getElementById('ticketActionArea');
+    const chatArea = document.getElementById('ticketChatArea');
+    if (existingTicket) {
+      actionArea.innerHTML = `<p style="color:var(--text-muted);">Ваш тикет открыт.</p>`;
+      chatArea.innerHTML = `<div class="ticket-chat" style="height:60vh;">
+        <div class="ticket-messages">${(existingTicket.messages||[]).map(m => `<div class="chat-message ${m.sender==='admin'?'bot':'user'}"><div class="chat-sender">${m.sender==='admin'?'Администратор':'Вы'}</div><div class="chat-bubble">${m.text}</div></div>`).join('')}</div>
+        <div style="display:flex; gap:6px; margin-bottom:10px;">
+          <input id="userTicketInput" placeholder="Введите сообщение..." style="flex:1;">
+          <button class="btn btn-outline" id="sendUserTicketReply">Отправить</button>
+        </div>
+        <button class="btn btn-outline" style="width:100%;" id="deleteMyTicket"><i class="fas fa-trash"></i> Удалить тикет</button>
+      </div>`;
+      document.getElementById('sendUserTicketReply').onclick = async () => {
+        const input = document.getElementById('userTicketInput');
+        const text = input.value.trim();
+        if (!text) return;
+        const { data: ticket } = await _supabase.from('tickets').select('messages').eq('id', existingTicket.id).single();
+        if (!ticket) return;
+        const messages = [...(ticket.messages || []), { sender: 'user', text, time: new Date().toISOString() }];
+        await _supabase.from('tickets').update({ messages }).eq('id', existingTicket.id);
+        input.value = '';
+        showSupportPage();
+      };
+      document.getElementById('deleteMyTicket').onclick = async () => { if (!confirm('Удалить тикет?')) return; await _supabase.from('tickets').delete().eq('id', existingTicket.id); showSupportPage(); };
+    } else {
+      actionArea.innerHTML = `<button class="btn btn-primary" id="openNewTicket"><i class="fas fa-plus"></i> Открыть тикет</button>`;
+      document.getElementById('openNewTicket').onclick = async () => { const { error } = await _supabase.from('tickets').insert([{ id: Date.now().toString(), email: currentUser.email, messages: [] }]); if (error) return showToast('Ошибка создания тикета'); showSupportPage(); };
+    }
+
+    document.querySelectorAll('.quick-question-btn').forEach(btn => btn.addEventListener('click', () => {
+      const question = btn.dataset.question;
+      const answers = { 'Что такое DiamKey?': 'DiamKey — единый аккаунт для сервисов Diamond.', 'Как использовать токен?': 'Токен нужен для идентификации.', 'Как восстановить пароль?': 'Обратитесь в поддержку.' };
+      document.getElementById('faqContent').innerHTML = `<h4>${question}</h4><p class="faq-answer">${answers[question]}</p>`;
+      document.getElementById('faqModal').style.display = 'flex';
+    }));
+  }
+
+  // ================== ФОРУМ ==================
+  async function sendForumMessage() {
+    if (!currentUser) return showToast('Войдите');
+    const input = document.getElementById('forumMessage');
+    const msg = input.value.trim();
+    if (!msg) return;
+    const tempPost = {
+      id: 'temp_' + Date.now(), email: currentUser.email, name: currentUser.name || currentUser.login, login: currentUser.login, avatar: currentUser.avatar || '', fa_icon: currentUser.fa_icon || '', message: msg, time: new Date().toISOString()
+    };
+    const container = document.getElementById('forumPosts');
+    const tempEl = document.createElement('div');
+    tempEl.className = 'card visible';
+    tempEl.style.marginBottom = '20px';
+    tempEl.innerHTML = `<div style="display:flex; gap:10px; align-items:center;">
+      <div style="width:40px; height:40px; border-radius:50%; overflow:hidden; background:var(--bg-card); display:flex; align-items:center; justify-content:center;">${tempPost.avatar ? `<img src="${tempPost.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user" style="color:var(--silver); font-size:1rem;"></i>'}</div>
+      <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:4px;">
+        <strong>${tempPost.fa_icon ? `<i class="${tempPost.fa_icon}" style="color:var(--silver); margin-right:4px;"></i>` : ''}${tempPost.name}</strong>
+        ${OLD_ADMIN_EMAILS.includes(tempPost.email) ? '<i class="fas fa-check-circle" style="color:var(--silver); margin-left:2px;" title="Администратор"></i>' : ''}
+        <small style="color:var(--text-muted); margin-left:0.5em;">&nbsp;только что</small>
+      </div>
+    </div>
+    <p style="margin-top:10px;">${tempPost.message}</p>`;
+    container.prepend(tempEl);
+    input.value = '';
+    const { error } = await _supabase.from('forum').insert([{
+      email: tempPost.email, name: tempPost.name, login: tempPost.login, avatar: tempPost.avatar, fa_icon: tempPost.fa_icon, message: tempPost.message, time: tempPost.time
+    }]);
+    if (error) { tempEl.remove(); showToast('Ошибка отправки'); }
+    else { setTimeout(() => loadForumPosts(), 1000); }
+  }
+
+  async function loadForumPosts() {
+    const { data: posts, error } = await _supabase.from('forum').select('*').order('time', { ascending: false });
+    if (error) return;
+    const container = document.getElementById('forumPosts');
+    if (!container) return;
+    container.innerHTML = posts?.length ? posts.map(p => `
+      <div class="card visible" style="margin-bottom:20px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div style="width:40px; height:40px; border-radius:50%; overflow:hidden; background:var(--bg-card); display:flex; align-items:center; justify-content:center;">${p.avatar ? `<img src="${p.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user" style="color:var(--silver); font-size:1rem;"></i>'}</div>
+          <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:4px;">
+            <strong>${p.fa_icon ? `<i class="${p.fa_icon}" style="color:var(--silver); margin-right:4px;"></i>` : ''}${p.name || p.login}</strong>
+            ${OLD_ADMIN_EMAILS.includes(p.email) ? '<i class="fas fa-check-circle" style="color:var(--silver); margin-left:2px;" title="Администратор"></i>' : ''}
+            <small style="color:var(--text-muted); margin-left:0.5em;">&nbsp;${new Date(p.time).toLocaleString()}</small>
+          </div>
+          ${currentUser && currentUser.role === 'admin' ? `<button class="btn btn-outline" style="padding:2px 10px; margin-left:auto;" onclick="window.deleteForumPost(${p.id})"><i class="fas fa-trash"></i></button>` : ''}
+        </div>
+        <p style="margin-top:10px;">${p.message}</p>
+      </div>
+    `).join('') : '<p>Нет сообщений.</p>';
+    updateForumAccess();
+  }
+
+  window.deleteForumPost = async (id) => { await _supabase.from('forum').delete().eq('id', id); loadForumPosts(); };
+
+  window.openProfileEditModal = async () => {
+    if (!currentUser) return;
+    const modal = document.getElementById('profileEditModal');
+    modal.style.display = 'flex';
+    document.getElementById('profileEditModalContent').innerHTML = `<h3>Редактирование профиля</h3>
+      <div class="input-group"><label>Имя</label><input id="editName" value="${currentUser.name||''}"></div>
+      <div class="input-group"><label>Описание</label><textarea id="editDescription">${currentUser.description||''}</textarea></div>
+      <div class="input-group"><label>Аватар (загрузите файл)</label><input type="file" id="editAvatarFile" accept="image/*"></div>
+      <button class="btn btn-primary" id="saveProfileBtn">Сохранить</button>
+      <button class="btn btn-outline" id="closeProfileEditModal">Закрыть</button>`;
+    document.getElementById('saveProfileBtn').onclick = async () => {
+      const name = document.getElementById('editName').value.trim();
+      const desc = document.getElementById('editDescription').value.trim();
+      const avatarFile = document.getElementById('editAvatarFile').files[0];
+      const updates = { name, description: desc };
+      if (avatarFile) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          updates.avatar = e.target.result;
+          currentUser.name = name; currentUser.description = desc; currentUser.avatar = updates.avatar;
+          localStorage.setItem('diamkey_current', JSON.stringify(currentUser));
+          modal.style.display = 'none';
+          showProfilePage();
+          const { error } = await _supabase.from('users').update(updates).eq('login', currentUser.login);
+          if (error) showToast('Ошибка сохранения аватара');
+        };
+        reader.readAsDataURL(avatarFile);
+      } else {
+        currentUser.name = name; currentUser.description = desc;
+        localStorage.setItem('diamkey_current', JSON.stringify(currentUser));
+        modal.style.display = 'none';
+        showProfilePage();
+        const { error } = await _supabase.from('users').update(updates).eq('login', currentUser.login);
+        if (error) showToast('Ошибка сохранения');
+      }
+    };
+    document.getElementById('closeProfileEditModal').onclick = () => modal.style.display = 'none';
   };
+
+  window.copyText = (t) => { navigator.clipboard.writeText(t); showToast('Скопировано!'); };
+
+  // ========== СЕРВИС (ОБСЛУЖИВАНИЕ) ==========
+  async function showServicePage() {
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'staff')) return;
+    const container = document.getElementById('service-page');
+    container.innerHTML = `<div style="padding:60px 0; max-width:1200px; margin:0 auto;">
+      <h2 style="color:var(--silver-light); margin-bottom:30px;"><i class="fas fa-tools"></i> Обслуживание</h2>
+      <div class="tabs">
+        <div class="tab active" data-tab="api">API-ключ</div>
+        <div class="tab" data-tab="training">Обучение ИИ</div>
+      </div>
+      <div id="tab-api" class="tab-content" style="display:block;">
+        <div class="card visible">
+          <h4>Mistral API Key</h4>
+          <div class="input-group">
+            <label>API-ключ</label>
+            <input type="password" id="mistralApiKeyInput" value="" placeholder="Загрузка...">
+          </div>
+          <button class="btn btn-primary" id="saveApiKeyBtn"><i class="fas fa-save"></i> Сохранить</button>
+        </div>
       </div>
       <div id="tab-training" class="tab-content" style="display:none;">
         <div class="card visible">
@@ -617,9 +772,7 @@ window.addEventListener('resize',()=>{
     </div>`;
 
     const { data: configData } = await _supabase.from('service_config').select('mistral_api_key').eq('id', 1).single();
-    if (configData) {
-      document.getElementById('mistralApiKeyInput').value = configData.mistral_api_key;
-    }
+    if (configData) document.getElementById('mistralApiKeyInput').value = configData.mistral_api_key;
 
     document.getElementById('saveApiKeyBtn').onclick = async () => {
       const newKey = document.getElementById('mistralApiKeyInput').value.trim();
@@ -642,10 +795,7 @@ window.addEventListener('resize',()=>{
     async function loadTrainingHistory() {
       const { data: items } = await _supabase.from('training_data').select('*').order('created_at', { ascending: false });
       const historyDiv = document.getElementById('trainingHistory');
-      if (!items || items.length === 0) {
-        historyDiv.innerHTML = '<p>Нет данных</p>';
-        return;
-      }
+      if (!items || items.length === 0) { historyDiv.innerHTML = '<p>Нет данных</p>'; return; }
       historyDiv.innerHTML = items.map(item => `<div style="margin-bottom:10px; padding:8px; background:var(--bg-tertiary); border-radius:12px;"><small>${new Date(item.created_at).toLocaleString()}</small><p>${item.content.substring(0, 100)}...</p></div>`).join('');
     }
     loadTrainingHistory();
