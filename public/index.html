@@ -24,14 +24,7 @@
       --grad-silver: linear-gradient(135deg, #2a2a33, #1a1a22);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: var(--bg-deep);
-      font-family: 'Inter', sans-serif;
-      color: var(--text-light);
-      line-height: 1.5;
-      overflow-x: hidden;
-      touch-action: pan-y; /* запрет зума на мобилках */
-    }
+    body { background: var(--bg-deep); font-family: 'Inter', sans-serif; color: var(--text-light); line-height: 1.5; overflow-x: hidden; touch-action: pan-y; }
     canvas { position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; pointer-events:none; }
     .content { position: relative; z-index:1; min-height: 100vh; }
     .navbar { display: flex; justify-content: space-between; align-items: center; padding: 24px; flex-wrap: wrap; gap:20px; animation: fadeUp 0.6s ease; }
@@ -266,7 +259,13 @@ window.addEventListener('resize',()=>{
   const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
 
-  function showToast(msg) { const t = document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+  function showToast(msg) { 
+    const t = document.createElement('div'); 
+    t.className = 'toast'; 
+    t.textContent = msg; 
+    document.body.appendChild(t); 
+    setTimeout(() => t.remove(), 3000); 
+  }
 
   function generateToken() {
     const adj = ['golden','silver','mystic','shadow','prime','crystal','onyx','brave','frost'];
@@ -278,9 +277,9 @@ window.addEventListener('resize',()=>{
     return `diamkey_${a}_${b}_${c}_${num}`;
   }
 
-  // Быстрый генератор секрета (без crypto.subtle)
+  // БЫСТРЫЙ ГЕНЕРАТОР СЕКРЕТА (без crypto.subtle)
   function generateFastSecret() {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    return Math.random().toString(36).substring(2,15) + Math.random().toString(36).substring(2,15);
   }
 
   function navigate(page) {
@@ -342,7 +341,7 @@ window.addEventListener('resize',()=>{
         <p><a href="#" class="auth-link" id="showRegisterLink">Создать аккаунт</a></p>
         <button class="btn btn-outline" id="closeAuthModal">Закрыть</button>`;
       document.getElementById('showRegisterLink').addEventListener('click', e => { e.preventDefault(); openAuthModal('register'); });
-      document.getElementById('doLoginBtn').addEventListener('click', () => login());
+      document.getElementById('doLoginBtn').addEventListener('click', login);
       document.getElementById('closeAuthModal').addEventListener('click', () => modal.style.display = 'none');
     } else {
       content.innerHTML = `<i class="fas fa-user-plus" style="font-size:48px; color:var(--silver);"></i><h3>Регистрация DiamKey</h3>
@@ -352,7 +351,7 @@ window.addEventListener('resize',()=>{
         <p><a href="#" class="auth-link" id="showLoginLink">Уже есть аккаунт? Войти</a></p>
         <button class="btn btn-outline" id="closeAuthModal">Закрыть</button>`;
       document.getElementById('showLoginLink').addEventListener('click', e => { e.preventDefault(); openAuthModal('login'); });
-      document.getElementById('doRegisterBtn').addEventListener('click', () => register());
+      document.getElementById('doRegisterBtn').addEventListener('click', register);
       document.getElementById('closeAuthModal').addEventListener('click', () => modal.style.display = 'none');
     }
     modal.style.display = 'flex';
@@ -362,13 +361,15 @@ window.addEventListener('resize',()=>{
     const identity = document.getElementById('loginIdentity')?.value.trim();
     const password = document.getElementById('loginPassword')?.value;
     const btn = document.getElementById('doLoginBtn');
-    if (!identity || !password) return showToast('Введите логин и пароль');
+    if (!identity || !password) {
+      showToast('Введите логин и пароль');
+      return;
+    }
     btn.disabled = true;
     try {
       const { data: user, error } = await _supabase.from('users').select('*').eq('login', identity).eq('password', password).maybeSingle();
       if (error || !user) {
         showToast('Неверный логин или пароль');
-        btn.disabled = false;
         return;
       }
       if (!user.secret_word) {
@@ -392,20 +393,27 @@ window.addEventListener('resize',()=>{
       document.getElementById('authModal').style.display = 'none';
       updateAuthButton(); updateHeroButtons();
       navigate('profile');
-    } catch (e) { showToast('Ошибка сети. Проверьте соединение'); btn.disabled = false; }
+    } catch (e) {
+      console.error(e);
+      showToast('Ошибка сети. Проверьте соединение');
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   async function register() {
     const login = document.getElementById('regLogin')?.value.trim();
     const password = document.getElementById('regPassword')?.value;
     const btn = document.getElementById('doRegisterBtn');
-    if (!login || password.length < 6) return showToast('Введите логин и пароль (мин. 6 символов)');
+    if (!login || password.length < 6) {
+      showToast('Введите логин и пароль (мин. 6 символов)');
+      return;
+    }
     btn.disabled = true;
     try {
       const { data: exist } = await _supabase.from('users').select('login').eq('login', login).maybeSingle();
       if (exist) {
         showToast('Логин уже занят');
-        btn.disabled = false;
         return;
       }
       const token = generateToken();
@@ -417,7 +425,6 @@ window.addEventListener('resize',()=>{
       }]);
       if (error) {
         showToast('Ошибка регистрации: ' + error.message);
-        btn.disabled = false;
         return;
       }
       currentUser = { login, email, secretWord, name: '', avatar: '', description: '', fa_icon: '', role: 'user' };
@@ -425,7 +432,12 @@ window.addEventListener('resize',()=>{
       document.getElementById('authModal').style.display = 'none';
       updateAuthButton(); updateHeroButtons();
       navigate('profile');
-    } catch (e) { showToast('Ошибка сети. Проверьте соединение'); btn.disabled = false; }
+    } catch (e) {
+      console.error(e);
+      showToast('Ошибка сети. Проверьте соединение');
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   function addAccountToSessions(user) {
@@ -444,12 +456,8 @@ window.addEventListener('resize',()=>{
     navigate('home');
   }
 
-  // ========== ПРОФИЛЬ (без изменений, но везде generateFastSecret не используется, только на регистрации/входе) =========
+  // ========== ПРОФИЛЬ (полная реализация) ==========
   async function showProfilePage() {
-    // ... (полный код профиля, он остаётся без изменений, кроме использования generateFastSecret – но он не вызывается в профиле)
-    // Чтобы не раздувать сообщение, я оставлю его таким же, как в твоём оригинале, потому что он не влияет на регистрацию.
-    // Если нужен полный профиль – могу вставить, но там всё стандартно.
-    // Для краткости я повторю оригинальный код профиля, который был у тебя в предыдущей версии.
     if (!currentUser) return;
     const container = document.getElementById('profile-page');
     const isAdmin = currentUser.role === 'admin';
@@ -657,7 +665,7 @@ window.addEventListener('resize',()=>{
     };
   };
 
-  // ========== ОБСЛУЖИВАНИЕ (без изменений) ==========
+  // ========== ОБСЛУЖИВАНИЕ ==========
   function showServiceTab() {
     const tab = document.getElementById('tab-service');
     if (!tab) return;
