@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -61,7 +61,7 @@
       margin-bottom: 12px;
       outline: none;
     }
-    input:focus { border-color: var(--silver-dark); }
+    input:focus { border-color: #7e7e8a; }
     .btn {
       width: 100%;
       padding: 14px;
@@ -75,9 +75,13 @@
       transition: 0.2s;
       margin-bottom: 8px;
     }
-    .btn:hover { background: #2a2a33; border-color: #4a4a55; }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .btn:hover:not(:disabled) { background: #2a2a33; border-color: #4a4a55; }
     .btn-outline { background: transparent; border: 1px solid var(--border-dim); color: var(--text-muted); }
-    .btn-outline:hover { background: rgba(255,255,255,0.03); }
+    .btn-outline:hover:not(:disabled) { background: rgba(255,255,255,0.03); }
     .error-msg { color: #e05d5d; font-size: 0.9rem; margin-top: 8px; display: none; }
     .success-msg { color: #5d9b7a; font-size: 0.9rem; margin-top: 8px; display: none; }
     .loader {
@@ -90,17 +94,15 @@
 </head>
 <body>
 <div class="oauth-card" id="oauthCard">
-  <i class="fas fa-key key-icon" id="keyIcon"></i>
+  <i class="fas fa-key key-icon"></i>
   <h2 id="statusTitle">Вход через DiamKey</h2>
   <p id="statusText">Сервис Diamond запрашивает доступ</p>
 
-  <!-- Блок автоматической загрузки (если уже есть сессия) -->
   <div id="autoLoginBlock" style="display:none;">
     <div class="loader"><i class="fas fa-circle-notch"></i></div>
     <p style="color:var(--text-muted);">Уже входим...</p>
   </div>
 
-  <!-- Форма входа (показывается, если сессии нет) -->
   <div id="authBlock" style="display:none;">
     <input id="loginInput" placeholder="Логин" autocomplete="off">
     <input id="passwordInput" type="password" placeholder="Пароль">
@@ -108,7 +110,6 @@
     <p style="margin-top:8px; color:var(--text-muted);">Нет аккаунта? <a href="#" id="showRegister" style="color:var(--text-light);">Зарегистрироваться</a></p>
   </div>
 
-  <!-- Форма регистрации -->
   <div id="registerBlock" style="display:none;">
     <input id="regLoginInput" placeholder="Придумайте логин" autocomplete="off">
     <input id="regPasswordInput" type="password" placeholder="Пароль (мин. 6 символов)">
@@ -135,11 +136,9 @@
   const authBlock = document.getElementById('authBlock');
   const registerBlock = document.getElementById('registerBlock');
   const errorMsg = document.getElementById('errorMsg');
-  const successMsg = document.getElementById('successMsg');
 
   statusText.innerText = `«${app}» запрашивает доступ`;
 
-  // Проверяем сессию
   const saved = localStorage.getItem('diamkey_current');
   let currentUser = null;
   if (saved) {
@@ -147,7 +146,6 @@
   }
 
   if (currentUser && currentUser.login) {
-    // Сессия есть – авто вход
     statusTitle.innerText = 'Вход почти выполнен';
     autoBlock.style.display = 'block';
     setTimeout(() => createTicketAndRedirect(currentUser), 500);
@@ -155,7 +153,6 @@
     authBlock.style.display = 'block';
   }
 
-  // Переключение между входом и регистрацией
   document.getElementById('showRegister').addEventListener('click', e => {
     e.preventDefault();
     authBlock.style.display = 'none';
@@ -167,8 +164,24 @@
     authBlock.style.display = 'block';
   });
 
+  // ---- Быстрая генерация секрета без crypto.subtle ----
+  function generateFastSecret() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
+
+  function generateToken() {
+    const adj = ['golden','silver','mystic','shadow','prime','crystal','onyx','brave','frost'];
+    const nouns = ['falcon','tiger','phoenix','dragon','wolf','spark','nexus','core','vault','key'];
+    const a = adj[Math.floor(Math.random()*adj.length)];
+    const b = nouns[Math.floor(Math.random()*nouns.length)];
+    const c = nouns[Math.floor(Math.random()*nouns.length)];
+    const num = Math.floor(1000+Math.random()*9000);
+    return `diamkey_${a}_${b}_${c}_${num}`;
+  }
+
   // Вход
   document.getElementById('loginBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('loginBtn');
     const login = document.getElementById('loginInput').value.trim();
     const password = document.getElementById('passwordInput').value;
     if (!login || !password) {
@@ -176,6 +189,8 @@
       errorMsg.innerText = 'Введите логин и пароль';
       return;
     }
+    btn.disabled = true;
+    errorMsg.style.display = 'none';
     try {
       const { data: user, error } = await _supabase
         .from('users')
@@ -187,7 +202,15 @@
       if (error || !user) {
         errorMsg.style.display = 'block';
         errorMsg.innerText = 'Неверный логин или пароль';
+        btn.disabled = false;
         return;
+      }
+
+      // Если нет secret_word – генерируем быстрый
+      if (!user.secret_word) {
+        const newSecret = generateFastSecret();
+        await _supabase.from('users').update({ secret_word: newSecret }).eq('login', user.login);
+        user.secret_word = newSecret;
       }
 
       const sessionUser = {
@@ -210,12 +233,14 @@
       await createTicketAndRedirect(sessionUser);
     } catch (e) {
       errorMsg.style.display = 'block';
-      errorMsg.innerText = 'Ошибка сети. Проверьте соединение';
+      errorMsg.innerText = 'Ошибка сети. Попробуйте ещё раз.';
+      btn.disabled = false;
     }
   });
 
   // Регистрация
   document.getElementById('registerBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('registerBtn');
     const login = document.getElementById('regLoginInput').value.trim();
     const password = document.getElementById('regPasswordInput').value;
     if (!login || password.length < 6) {
@@ -223,7 +248,11 @@
       errorMsg.innerText = 'Придумайте логин и пароль (мин. 6 символов)';
       return;
     }
+    btn.disabled = true;
+    errorMsg.style.display = 'none';
+
     try {
+      // Проверка существования
       const { data: exist } = await _supabase
         .from('users')
         .select('login')
@@ -232,10 +261,11 @@
       if (exist) {
         errorMsg.style.display = 'block';
         errorMsg.innerText = 'Логин уже занят';
+        btn.disabled = false;
         return;
       }
 
-      const secretWord = await generateSecret(login);
+      const secretWord = generateFastSecret(); // Быстро
       const email = login + '@diamkey.local';
       const token = generateToken();
 
@@ -255,7 +285,8 @@
 
       if (error) {
         errorMsg.style.display = 'block';
-        errorMsg.innerText = 'Ошибка регистрации: ' + error.message;
+        errorMsg.innerText = 'Ошибка: ' + error.message;
+        btn.disabled = false;
         return;
       }
 
@@ -279,32 +310,15 @@
       await createTicketAndRedirect(sessionUser);
     } catch (e) {
       errorMsg.style.display = 'block';
-      errorMsg.innerText = 'Ошибка сети. Проверьте соединение';
+      errorMsg.innerText = 'Ошибка сети. Попробуйте ещё раз.';
+      btn.disabled = false;
     }
   });
 
-  function generateToken() {
-    const adj = ['golden','silver','mystic','shadow','prime','crystal','onyx','brave','frost'];
-    const nouns = ['falcon','tiger','phoenix','dragon','wolf','spark','nexus','core','vault','key'];
-    const a = adj[Math.floor(Math.random()*adj.length)];
-    const b = nouns[Math.floor(Math.random()*nouns.length)];
-    const c = nouns[Math.floor(Math.random()*nouns.length)];
-    const num = Math.floor(1000+Math.random()*9000);
-    return `diamkey_${a}_${b}_${c}_${num}`;
-  }
-
-  async function generateSecret(login) {
-    const msg = login + Date.now() + Math.random();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 24).toUpperCase();
-  }
-
-  // Создаём тикет и редиректим
   async function createTicketAndRedirect(user) {
     if (!redirect) {
       statusTitle.innerText = 'Готово!';
-      autoBlock.innerHTML = '<i class="fas fa-check-circle" style="font-size:3rem; color: var(--success-msg-color, #5d9b7a);"></i>';
+      autoBlock.innerHTML = '<i class="fas fa-check-circle" style="font-size:3rem; color: #5d9b7a;"></i>';
       return;
     }
     const ticket = 'diam_ticket_' + Math.random().toString(36).substr(2) + Date.now().toString(36);
@@ -314,14 +328,13 @@
         login: user.login
       }]);
       if (error) {
-        console.error('Ошибка создания тикета:', error);
         errorMsg.style.display = 'block';
         errorMsg.innerText = 'Не удалось создать тикет. Попробуйте позже.';
         return;
       }
       setTimeout(() => {
         window.location.href = redirect + (redirect.includes('?') ? '&' : '?') + 'ticket=' + ticket;
-      }, 1000);
+      }, 800);
     } catch (e) {
       errorMsg.style.display = 'block';
       errorMsg.innerText = 'Ошибка сети. Проверьте соединение';
