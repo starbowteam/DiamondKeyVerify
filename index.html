@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="DiamKey — единый аккаунт для сервисов Diamond">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>DiamKey | Единый ключ</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-card: #111116;
+      --border-dim: #1f1f2a;
+      --text-light: #e0e0e0;
+      --text-muted: #9ca3af;
+      --silver: #a8a8b3;
+      --silver-light: #c0c0cc;
+      --silver-dark: #7e7e8a;
+      --grad-silver: linear-gradient(135deg, #2a2a33, #1a1a22);
+      --accent-gold: #f0c060;
+      --accent-blue: #3498db;
+      --accent-purple: #9b59b6;
+      --accent-diamond: linear-gradient(135deg, #e0e0e0, #ffffff, #b0b0b0);
+      --radius-lg: 20px;
+      --radius-xl: 32px;
+      --transition: 0.25s ease;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg-deep);
+      font-family: 'Inter', sans-serif;
+      color: var(--text-light);
+      line-height: 1.5;
+      overflow-x: hidden;
+      touch-action: pan-y;
+    }
+    #app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+    }
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      backdrop-filter: blur(12px);
+      background: rgba(10,10,15,0.75);
+      border-bottom: 1px solid var(--border-dim);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--silver-light);
+      text-decoration: none;
+    }
+    .logo img { height: 36px; width: auto; }
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+    .nav-links a, .nav-links button {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover, .nav-links button:hover { color: var(--text-light); }
+    .burger-menu {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.6rem;
+      cursor: pointer;
+    }
+    .page {
+      display: none;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 24px 60px;
+    }
+    .page.active { display: block; }
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      border: 1px solid var(--border-dim);
+      backdrop-filter: blur(12px);
+      transition: all var(--transition);
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #3a3a44;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.5);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 28px;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      border: 1px solid var(--border-dim);
+      background: transparent;
+      color: var(--text-light);
+      font-size: 1rem;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--grad-silver);
+      border-color: #3a3a44;
+    }
+    .btn-primary:hover { background: #2a2a33; border-color: var(--silver-dark); }
+    .btn-outline:hover { background: rgba(255,255,255,0.03); border-color: var(--silver-dark); }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      opacity: 0.8;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input, textarea, select {
+      width: 100%;
+      background: #1e1e2a;
+      border: 1px solid var(--border-dim);
+      color: var(--text-light);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 1rem;
+      outline: none;
+      margin-top: 6px;
+    }
+    select option { background: #111116; }
+    input:focus, textarea:focus, select:focus { border-color: var(--silver-dark); }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-card);
+      border-left: 4px solid var(--silver);
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      z-index: 1100;
+      animation: fadeUp 0.3s;
+    }
+    @keyframes fadeUp {
+      0% { opacity: 0; transform: translateY(30px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @media (max-width: 768px) {
+      .navbar { flex-wrap: wrap; }
+      .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        background: var(--bg-card);
+        padding: 20px;
+        border-radius: 20px;
+        margin-top: 10px;
+      }
+      .nav-links.active { display: flex; }
+      .burger-menu { display: block; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header class="navbar">
+    <div class="logo">
+      <a href="/">
+        <img src="assets/KeyHold.png" alt="DiamKey">
+        <span>DIAMKEY</span>
+      </a>
+    </div>
+    <button class="burger-menu" id="burgerMenu"><i class="fas fa-bars"></i></button>
+    <nav class="nav-links" id="navLinks">
+      <a href="/">Главная</a>
+      <a href="/profile">Профиль</a>
+      <a href="/subscription">Diamond Plus</a>
+      <a href="/docs">Документы</a>
+      <a href="/admin">Админка</a>
+    </nav>
+  </header>
+  <div id="pageContent" class="page active"></div>
+</div>
+<div id="toastContainer"></div>
+
+<script src="js/diamkey-core.js"></script>
+<script src="js/diamkey-auth.js"></script>
+<script src="js/diamkey-profile.js"></script>
+<script src="js/diamkey-subscription.js"></script>
+<script src="js/diamkey-admin.js"></script>
+<script src="js/diamkey-services.js"></script>
+<script src="js/diamkey-router.js"></script>
+</body>
+</html>
