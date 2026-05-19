@@ -68,7 +68,12 @@
       width: auto;
       filter: brightness(0.95);
       transition: transform 0.2s;
-      display: block; /* гарантия, что не будет лишних отступов */
+      display: block;
+    }
+    .logo .fallback-icon {
+      font-size: 32px;
+      color: #c0c8e0;
+      display: none;
     }
     .logo span {
       font-size: 24px;
@@ -188,6 +193,47 @@
       font-size: 1.2rem;
       color: #c0c8e0;
     }
+    .viktorshopa-message {
+      margin-top: 32px;
+      padding: 24px;
+      background: rgba(40, 44, 55, 0.5);
+      border-radius: 28px;
+      border-left: 3px solid #c0c8e0;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .viktorshopa-avatar {
+      width: 52px;
+      height: 52px;
+      background: #2a2c34;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: #c0c8e0;
+      flex-shrink: 0;
+    }
+    .viktorshopa-text {
+      flex: 1;
+    }
+    .viktorshopa-text strong {
+      color: #e0e0e0;
+      font-size: 1rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .viktorshopa-text p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #b0b0c0;
+      line-height: 1.5;
+    }
+    .viktorshopa-text i {
+      color: #80c080;
+      margin-right: 6px;
+    }
     .btn {
       display: inline-flex;
       align-items: center;
@@ -260,6 +306,10 @@
       .card h2 {
         font-size: 1.8rem;
       }
+      .viktorshopa-message {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
   </style>
 </head>
@@ -268,8 +318,8 @@
   <div class="wrapper">
     <div class="navbar glass">
       <a class="logo" href="#">
-        <!-- Логотип KeyHold.png. Если файла нет, будет пусто (без фавикона) -->
-        <img src="KeyHold.png" alt="DiamKey Logo" onerror="this.style.display='none'">
+        <img src="KeyHold.png" alt="DiamKey Logo" onerror="this.onerror=null; this.style.display='none'; this.nextSibling.style.display='inline-block';">
+        <i class="fas fa-key fallback-icon"></i>
         <span>DIAMKEY</span>
       </a>
       <div class="nav-links">
@@ -297,6 +347,21 @@
             <li><i class="fas fa-gem"></i> Подписка "Diamond Plus для Diamond AI"</li>
             <li><i class="fas fa-ellipsis-h"></i> И многое другое</li>
           </ul>
+
+          <!-- Сообщение от viktorshopa -->
+          <div class="viktorshopa-message">
+            <div class="viktorshopa-avatar">
+              <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="viktorshopa-text">
+              <strong><i class="fas fa-check-circle"></i> viktorshopa, создатель экосистемы Diamond</strong>
+              <p>
+                Регистрация через DiamKey полностью функционирует и уже доступна в сервисе Diamond AI.  
+                Сайт DiamKey проходит внешний и внутренний редизайн, однако базовая логика создания аккаунта остаётся без изменений — она идентична той, что используется в Diamond AI.  
+                Вы можете смело регистрироваться через Diamond AI, а после завершения обновления DiamKey ваш профиль будет работать в полную силу.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
