@@ -1,4 +1,4 @@
-// ==================== DIAMKEY ROUTER — маршрутизация и инициализация ====================
+// ==================== DIAMKEY ROUTER — маршрутизация, рендер страниц, инициализация ====================
 
 // Сопоставление путей с функциями отрисовки
 const routes = {
@@ -7,6 +7,7 @@ const routes = {
   '/subscription': renderSubscriptionPage,
   '/docs': renderDocsPage,
   '/admin': renderAdminPage,
+  '/support': renderSupportPage,
 };
 
 // Динамический путь для публичного профиля /@username
@@ -14,46 +15,64 @@ function matchRoute(path) {
   if (routes[path]) return routes[path];
   if (path.startsWith('/@')) {
     const username = path.substring(2);
-    return () => renderProfilePage(username);
+    return () => renderPublicProfile(username);
   }
   return null;
 }
 
-// Главная страница (вход/регистрация)
+// Главная страница (вход/регистрация + лендинг)
 function renderHomePage() {
   const page = document.getElementById('pageContent');
   if (!page) return;
+
+  if (currentUser) {
+    // Если уже вошли — показываем приветствие
+    page.innerHTML = `
+      <div class="hero">
+        <h1>Добро пожаловать, ${escapeHtml(currentUser.name || currentUser.login)}!</h1>
+        <p>Вы вошли в свой DiamKey — единый ключ экосистемы Diamond.</p>
+        <div style="display:flex; gap:16px; justify-content:center;">
+          <a href="/profile" class="btn btn-primary"><i class="fas fa-user"></i> Мой профиль</a>
+          <a href="/docs" class="btn btn-outline"><i class="fas fa-folder"></i> Документы</a>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   page.innerHTML = `
     <div class="hero">
       <h1>DiamKey</h1>
-      <p>Единый ключ ко всем сервисам Diamond</p>
+      <p>Единый аккаунт для всех сервисов Diamond</p>
     </div>
-    <div class="auth-tabs">
-      <button class="btn auth-tab active" id="tabLogin">Вход</button>
-      <button class="btn auth-tab" id="tabRegister">Регистрация</button>
-    </div>
-    <div id="authForms">
-      <div id="loginForm">
-        <div class="input-group">
-          <label>Логин</label>
-          <input type="text" id="loginInput" placeholder="Введите логин">
-        </div>
-        <div class="input-group">
-          <label>Пароль</label>
-          <input type="password" id="loginPassword" placeholder="········">
-        </div>
-        <button class="btn btn-primary" id="doLogin">Войти</button>
+    <div class="card" style="max-width:400px; margin:0 auto;">
+      <div class="auth-tabs">
+        <button class="btn auth-tab active" id="tabLogin">Вход</button>
+        <button class="btn auth-tab" id="tabRegister">Регистрация</button>
       </div>
-      <div id="registerForm" style="display:none;">
-        <div class="input-group">
-          <label>Логин</label>
-          <input type="text" id="regLogin" placeholder="Придумайте логин">
+      <div id="authForms">
+        <div id="loginForm">
+          <div class="input-group">
+            <label>Логин</label>
+            <input type="text" id="loginInput" placeholder="Введите логин">
+          </div>
+          <div class="input-group">
+            <label>Пароль</label>
+            <input type="password" id="loginPassword" placeholder="········">
+          </div>
+          <button class="btn btn-primary" id="doLogin">Войти</button>
         </div>
-        <div class="input-group">
-          <label>Пароль</label>
-          <input type="password" id="regPassword" placeholder="Минимум 6 символов">
+        <div id="registerForm" style="display:none;">
+          <div class="input-group">
+            <label>Логин</label>
+            <input type="text" id="regLogin" placeholder="Придумайте логин">
+          </div>
+          <div class="input-group">
+            <label>Пароль</label>
+            <input type="password" id="regPassword" placeholder="Минимум 6 символов">
+          </div>
+          <button class="btn btn-primary" id="doRegister">Создать</button>
         </div>
-        <button class="btn btn-primary" id="doRegister">Создать</button>
       </div>
     </div>
   `;
@@ -85,43 +104,6 @@ function renderHomePage() {
   });
 }
 
-// Страница профиля (личный или публичный)
-function renderProfilePage(username = null) {
-  if (username || (currentUser && !window.location.search.includes('edit'))) {
-    renderProfile(username);
-  } else if (currentUser && window.location.search.includes('edit')) {
-    renderProfileEdit();
-  } else {
-    document.getElementById('pageContent').innerHTML = '<p>Пожалуйста, войдите</p>';
-  }
-}
-
-function renderProfileEdit() {
-  const page = document.getElementById('pageContent');
-  page.innerHTML = `
-    <h2>Редактирование профиля</h2>
-    <div class="input-group"><label>Статус</label><input id="editStatus" value="${escapeHtml(currentUser.status_text || '')}"></div>
-    <div class="input-group"><label>Рамка аватара</label>
-      <select id="editFrame">
-        <option value="default">Обычная</option>
-        <option value="gold">Золотая</option>
-        <option value="silver">Серебряная</option>
-        <option value="neon">Неоновая</option>
-      </select>
-    </div>
-    <button class="btn btn-primary" id="saveProfile">Сохранить</button>
-  `;
-  document.getElementById('saveProfile').addEventListener('click', async () => {
-    const status = document.getElementById('editStatus').value;
-    const frame = document.getElementById('editFrame').value;
-    await _supabase.from('users').update({ status_text: status, avatar_frame: frame }).eq('login', currentUser.login);
-    currentUser.status_text = status;
-    currentUser.avatar_frame = frame;
-    localStorage.setItem('diamkey_current', JSON.stringify(currentUser));
-    navigate('/profile');
-  });
-}
-
 // Страница документов
 async function renderDocsPage() {
   const page = document.getElementById('pageContent');
@@ -131,9 +113,57 @@ async function renderDocsPage() {
   }
   const { data } = await _supabase.from('knowledge_docs').select('*').eq('user_login', currentUser.login);
   page.innerHTML = `
-    <h2>Мои документы</h2>
+    <h2><i class="fas fa-book"></i> Мои документы</h2>
     ${data?.length ? data.map(d => `<div class="card">${escapeHtml(d.title)}</div>`).join('') : '<p>Нет документов</p>'}
   `;
+}
+
+// Страница поддержки (тикеты) — старый функционал
+async function renderSupportPage() {
+  const page = document.getElementById('pageContent');
+  if (!currentUser) {
+    page.innerHTML = '<p>Войдите для доступа к поддержке</p>';
+    return;
+  }
+
+  // Проверяем существующие тикеты
+  const { data: tickets } = await _supabase.from('tickets').select('*').eq('email', currentUser.email);
+  const existingTicket = tickets?.length ? tickets[0] : null;
+
+  if (existingTicket) {
+    // Показываем чат тикета
+    page.innerHTML = `
+      <h2><i class="fas fa-headset"></i> Поддержка</h2>
+      <div class="ticket-chat">
+        <div class="ticket-messages" id="ticketMessages">
+          ${(existingTicket.messages || []).map(m => `<div class="chat-message ${m.sender==='admin'?'bot':'user'}"><div class="chat-bubble">${escapeHtml(m.text)}</div></div>`).join('')}
+        </div>
+        <div class="ticket-input">
+          <input type="text" id="ticketMessage" placeholder="Введите сообщение...">
+          <button class="btn" id="sendTicketMsg"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </div>
+    `;
+    document.getElementById('sendTicketMsg').addEventListener('click', async () => {
+      const input = document.getElementById('ticketMessage');
+      const text = input.value.trim();
+      if (!text) return;
+      const messages = [...(existingTicket.messages || []), { sender: 'user', text, time: new Date().toISOString() }];
+      await _supabase.from('tickets').update({ messages }).eq('id', existingTicket.id);
+      input.value = '';
+      renderSupportPage();
+    });
+  } else {
+    page.innerHTML = `
+      <h2><i class="fas fa-headset"></i> Поддержка</h2>
+      <p>Нет открытых тикетов.</p>
+      <button class="btn btn-primary" id="openTicketBtn"><i class="fas fa-plus"></i> Открыть тикет</button>
+    `;
+    document.getElementById('openTicketBtn').addEventListener('click', async () => {
+      await _supabase.from('tickets').insert([{ id: Date.now().toString(), email: currentUser.email, messages: [] }]);
+      renderSupportPage();
+    });
+  }
 }
 
 // Навигация
@@ -146,8 +176,6 @@ function handleRoute() {
   const path = window.location.pathname;
   const route = matchRoute(path);
   if (route) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('pageContent').classList.add('active');
     route();
   } else {
     document.getElementById('pageContent').innerHTML = '<h2>404 — Страница не найдена</h2>';
@@ -159,22 +187,27 @@ document.getElementById('burgerMenu').addEventListener('click', () => {
   document.getElementById('navLinks').classList.toggle('active');
 });
 
+// Выпадающее меню "Инструменты"
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'toolsBtn') {
+    const menu = document.getElementById('toolsMenu');
+    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+  } else if (!e.target.closest('#toolsDropdown')) {
+    const menu = document.getElementById('toolsMenu');
+    if (menu) menu.style.display = 'none';
+  }
+});
+
 // Инициализация приложения
 (async function() {
-  const saved = localStorage.getItem('diamkey_current');
-  if (saved) {
-    try {
-      currentUser = JSON.parse(saved);
-      updateAuthUI();
-    } catch(e) {
-      currentUser = null;
-    }
-  }
+  initSession(); // из diamkey-core.js
 
   // Обработка переходов
   window.addEventListener('popstate', handleRoute);
   handleRoute();
 
   // Запускаем сервисы (статусы, уведомления)
-  initServices();
+  if (typeof initServices === 'function') {
+    initServices();
+  }
 })();
