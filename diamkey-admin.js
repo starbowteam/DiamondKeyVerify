@@ -1,4 +1,4 @@
-// ==================== DIAMKEY ADMIN — управление пользователями, аудит, статистика ====================
+// ==================== DIAMKEY ADMIN — управление пользователями, аудит, тикеты, статистика ====================
 
 async function renderAdminPage() {
   const page = document.getElementById('pageContent');
@@ -47,8 +47,8 @@ async function renderAdminUsers() {
     </div>
     <div class="user-list" id="userList">
       ${users.map(u => `
-        <div class="user-row" data-login="${u.login}">
-          <span><strong>${escapeHtml(u.login)}</strong> (${u.email || '-'})</span>
+        <div class="user-row" data-login="${u.login}" data-email="${u.email || ''}">
+          <span><strong>${escapeHtml(u.login)}</strong> (${escapeHtml(u.email || '-')})</span>
           <span>Роль: ${u.role || 'user'}</span>
           <span>IP: ${u.ip_address || '-'}</span>
           <button class="btn" onclick="editUserByAdmin('${u.login}')"><i class="fas fa-edit"></i></button>
@@ -66,9 +66,57 @@ async function renderAdminUsers() {
     const term = e.target.value.toLowerCase();
     document.querySelectorAll('.user-row').forEach(row => {
       const login = row.dataset.login.toLowerCase();
-      row.style.display = login.includes(term) ? '' : 'none';
+      const email = row.dataset.email.toLowerCase();
+      row.style.display = login.includes(term) || email.includes(term) ? '' : 'none';
     });
   });
+}
+
+async function editUserByAdmin(login) {
+  const { data: user } = await _supabase.from('users').select('*').eq('login', login).maybeSingle();
+  if (!user) return;
+  const page = document.getElementById('pageContent');
+  page.innerHTML = `
+    <h3>Редактирование: ${escapeHtml(login)}</h3>
+    <div class="card">
+      <div class="input-group">
+        <label>Логин</label>
+        <input type="text" id="editAdminLogin" value="${escapeHtml(user.login)}">
+      </div>
+      <div class="input-group">
+        <label>Роль</label>
+        <select id="editAdminRole">
+          <option value="user" ${user.role === 'user' ? 'selected' : ''}>Пользователь</option>
+          <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>Персонал</option>
+          <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Админ</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Подписка</label>
+        <select id="editAdminSub">
+          <option value="free" ${user.subscription_tier === 'free' ? 'selected' : ''}>Бесплатно</option>
+          <option value="diamond_plus" ${user.subscription_tier === 'diamond_plus' ? 'selected' : ''}>Diamond Plus</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="saveAdminEdit">Сохранить</button>
+      <button class="btn btn-outline" onclick="renderAdminPage()">Назад</button>
+    </div>
+  `;
+  document.getElementById('saveAdminEdit').addEventListener('click', async () => {
+    const newLogin = document.getElementById('editAdminLogin').value.trim();
+    const newRole = document.getElementById('editAdminRole').value;
+    const newSub = document.getElementById('editAdminSub').value;
+    await _supabase.from('users').update({ login: newLogin, role: newRole, subscription_tier: newSub }).eq('login', login);
+    showToast('Сохранено', 'success');
+    renderAdminPage();
+  });
+}
+
+async function deleteUserByAdmin(login) {
+  if (!confirm(`Удалить пользователя ${login}?`)) return;
+  await _supabase.from('users').delete().eq('login', login);
+  showToast('Пользователь удалён', 'success');
+  renderAdminUsers();
 }
 
 async function renderAdminAudit() {
@@ -102,22 +150,14 @@ async function renderAdminTickets() {
     <div class="ticket-row">
       <span>${t.user_login} — ${t.status}</span>
       <span>${new Date(t.created_at).toLocaleString()}</span>
+      ${t.admin_notes ? `<p>${escapeHtml(t.admin_notes)}</p>` : ''}
       <button class="btn" onclick="resolveTicket('${t.id}')">Решить</button>
     </div>
   `).join('') : '<p>Тикетов нет</p>';
 }
 
-async function editUserByAdmin(login) {
-  // ... реализация редактирования
-}
-
-async function deleteUserByAdmin(login) {
-  if (!confirm('Удалить пользователя?')) return;
-  await _supabase.from('users').delete().eq('login', login);
-  renderAdminUsers();
-}
-
 async function resolveTicket(id) {
   await _supabase.from('purchase_discussions').update({ status: 'resolved' }).eq('id', id);
+  showToast('Тикет решён', 'success');
   renderAdminTickets();
-}ы
+}
