@@ -1,4 +1,4 @@
-
+// ==================== DIAMKEY CORE — конфигурация, утилиты, локализация ====================
 const SUPABASE_URL = 'https://pqgwrokpizeelfrjmgoc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxZ3dyb2twaXplZWxmcmptZ29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNTAyMDksImV4cCI6MjA5MjcyNjIwOX0.qtFCGBnpwdQbtmpwSZxI_hH3arq4HBAw62vs5h8WmAk';
 
@@ -7,6 +7,7 @@ const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let currentPage = 'home';
 
+// ========== ЛОКАЛИЗАЦИЯ ==========
 const locales = {
   ru: {
     welcome: 'Добро пожаловать в DiamKey',
@@ -26,13 +27,11 @@ const locales = {
     errorRegister: 'Ошибка регистрации',
     loginPlaceholder: 'Логин',
     passwordPlaceholder: 'Пароль',
-    newChat: 'Новый чат',
     search: 'Поиск...',
     noResults: 'Ничего не найдено',
     today: 'Сегодня',
     yesterday: 'Вчера',
     older: 'Давно',
-
   },
   en: {
     welcome: 'Welcome to DiamKey',
@@ -94,4 +93,46 @@ function getAvatarFrame(user) {
   if (user.role === 'admin') return '#f0c060';
   if (user.role === 'staff') return '#a8a8b3';
   return 'transparent';
+}
+
+// ========== ИНИЦИАЛИЗАЦИЯ СЕССИИ ==========
+function initSession() {
+  const saved = localStorage.getItem('diamkey_current');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+    } catch(e) {
+      currentUser = null;
+      localStorage.removeItem('diamkey_current');
+    }
+  }
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const authLink = document.getElementById('authLink');
+  const toolsDropdown = document.getElementById('toolsDropdown');
+  const adminLink = document.querySelector('.admin-only');
+  
+  if (currentUser) {
+    if (authLink) {
+      authLink.innerHTML = `<i class="fas fa-user-circle"></i> ${escapeHtml(currentUser.login)}`;
+      authLink.href = '/profile';
+    }
+    // Показываем папку инструментов для персонала и админов
+    if (toolsDropdown && (currentUser.role === 'admin' || currentUser.role === 'staff')) {
+      toolsDropdown.style.display = 'block';
+    }
+    // Показываем админку только админам
+    if (adminLink && currentUser.role === 'admin') {
+      adminLink.style.display = 'block';
+    }
+  } else {
+    if (authLink) {
+      authLink.innerHTML = `<i class="fas fa-sign-in-alt"></i> Войти`;
+      authLink.href = '#';
+    }
+    if (toolsDropdown) toolsDropdown.style.display = 'none';
+    if (adminLink) adminLink.style.display = 'none';
+  }
 }
